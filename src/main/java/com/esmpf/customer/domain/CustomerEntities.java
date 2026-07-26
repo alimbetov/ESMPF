@@ -4,13 +4,14 @@ import com.esmpf.shared.persistence.TenantEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Index;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Getter @Setter @NoArgsConstructor @Entity
 @Table(name = "customer", indexes = @Index(name = "idx_customer_business", columnList = "business_id"))
@@ -20,10 +21,10 @@ class Customer extends TenantEntity {
     @Column(name = "primary_phone", length = 50) private String primaryPhone;
     @Column(name = "primary_email", length = 320) private String primaryEmail;
     @Column(name = "preferred_language", length = 10) private String preferredLanguage;
-    @Lob @Column(name = "contacts_json") private String contactsJson;
-    @Lob @Column(name = "notification_preferences_json") private String notificationPreferencesJson;
-    @Lob @Column(name = "billing_data_json") private String billingDataJson;
-    @Lob @Column(name = "consents_json") private String consentsJson;
+    @JdbcTypeCode(SqlTypes.JSON) @Column(name = "contacts_json", columnDefinition = "jsonb") private String contactsJson;
+    @JdbcTypeCode(SqlTypes.JSON) @Column(name = "notification_preferences_json", columnDefinition = "jsonb") private String notificationPreferencesJson;
+    @JdbcTypeCode(SqlTypes.JSON) @Column(name = "billing_data_json", columnDefinition = "jsonb") private String billingDataJson;
+    @JdbcTypeCode(SqlTypes.JSON) @Column(name = "consents_json", columnDefinition = "jsonb") private String consentsJson;
     @Column(name = "status", nullable = false, length = 40) private String status;
 }
 
@@ -33,7 +34,7 @@ class CustomerInteraction extends TenantEntity {
     @Column(name = "customer_id", nullable = false) private UUID customerId;
     @Column(name = "type", nullable = false, length = 60) private String type;
     @Column(name = "subject", length = 300) private String subject;
-    @Lob @Column(name = "content") private String content;
+    @Column(name = "content", columnDefinition = "text") private String content;
     @Column(name = "occurred_at", nullable = false) private Instant occurredAt;
     @Column(name = "created_by") private UUID createdBy;
     @Column(name = "related_subject_type", length = 80) private String relatedSubjectType;
