@@ -1,6 +1,6 @@
 package com.esmpf.customer.domain;
 
-import com.esmpf.shared.persistence.BaseEntity;
+import com.esmpf.shared.persistence.TenantEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Index;
@@ -14,43 +14,43 @@ import lombok.Setter;
 
 @Getter @Setter @NoArgsConstructor @Entity
 @Table(name = "customer", indexes = @Index(name = "idx_customer_business", columnList = "business_id"))
-class Customer extends BaseEntity {
-    @Column(name = "type") private String type;
-    @Column(name = "name") private String name;
-    @Column(name = "primary_phone") private String primaryPhone;
-    @Column(name = "primary_email") private String primaryEmail;
-    @Column(name = "preferred_language") private String preferredLanguage;
+class Customer extends TenantEntity {
+    @Column(name = "type", nullable = false, length = 40) private String type;
+    @Column(name = "name", nullable = false, length = 200) private String name;
+    @Column(name = "primary_phone", length = 50) private String primaryPhone;
+    @Column(name = "primary_email", length = 320) private String primaryEmail;
+    @Column(name = "preferred_language", length = 10) private String preferredLanguage;
     @Lob @Column(name = "contacts_json") private String contactsJson;
     @Lob @Column(name = "notification_preferences_json") private String notificationPreferencesJson;
     @Lob @Column(name = "billing_data_json") private String billingDataJson;
     @Lob @Column(name = "consents_json") private String consentsJson;
-    @Column(name = "status") private String status;
+    @Column(name = "status", nullable = false, length = 40) private String status;
 }
 
 @Getter @Setter @NoArgsConstructor @Entity
 @Table(name = "customer_interaction", indexes = @Index(name = "idx_customer_interaction_business", columnList = "business_id"))
-class CustomerInteraction extends BaseEntity {
-    @Column(name = "customer_id") private UUID customerId;
-    @Column(name = "type") private String type;
-    @Column(name = "subject") private String subject;
+class CustomerInteraction extends TenantEntity {
+    @Column(name = "customer_id", nullable = false) private UUID customerId;
+    @Column(name = "type", nullable = false, length = 60) private String type;
+    @Column(name = "subject", length = 300) private String subject;
     @Lob @Column(name = "content") private String content;
-    @Column(name = "occurred_at") private Instant occurredAt;
+    @Column(name = "occurred_at", nullable = false) private Instant occurredAt;
     @Column(name = "created_by") private UUID createdBy;
-    @Column(name = "related_subject_type") private String relatedSubjectType;
+    @Column(name = "related_subject_type", length = 80) private String relatedSubjectType;
     @Column(name = "related_subject_id") private UUID relatedSubjectId;
 }
 
 @Getter @Setter @NoArgsConstructor @Entity
 @Table(name = "service_location", indexes = @Index(name = "idx_service_location_business", columnList = "business_id"))
-class ServiceLocation extends BaseEntity {
-    @Column(name = "customer_id") private UUID customerId;
+class ServiceLocation extends TenantEntity {
+    @Column(name = "customer_id", nullable = false) private UUID customerId;
     @Column(name = "parent_location_id") private UUID parentLocationId;
-    @Column(name = "name") private String name;
-    @Column(name = "type") private String type;
-    @Column(name = "address") private String address;
+    @Column(name = "name", nullable = false, length = 200) private String name;
+    @Column(name = "type", length = 60) private String type;
+    @Column(name = "address", length = 500) private String address;
     @Column(name = "latitude") private Double latitude;
     @Column(name = "longitude") private Double longitude;
-    @Column(name = "timezone") private String timezone;
-    @Column(name = "access_instructions") private String accessInstructions;
-    @Column(name = "status") private String status;
+    @Column(name = "timezone", length = 100) private String timezone;
+    @Column(name = "access_instructions", length = 1000) private String accessInstructions;
+    @Column(name = "status", nullable = false, length = 40) private String status;
 }

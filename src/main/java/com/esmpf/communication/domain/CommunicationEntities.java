@@ -1,6 +1,6 @@
 package com.esmpf.communication.domain;
 
-import com.esmpf.shared.persistence.BaseEntity;
+import com.esmpf.shared.persistence.TenantEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Index;
@@ -14,42 +14,42 @@ import lombok.Setter;
 
 @Getter @Setter @NoArgsConstructor @Entity
 @Table(name = "notification_template", indexes = @Index(name = "idx_notification_template_business", columnList = "business_id"))
-class NotificationTemplate extends BaseEntity {
-    @Column(name = "code") private String code;
-    @Column(name = "channel") private String channel;
-    @Column(name = "locale") private String locale;
-    @Column(name = "template_version") private Integer templateVersion;
-    @Column(name = "subject_template") private String subjectTemplate;
-    @Lob @Column(name = "body_template") private String bodyTemplate;
-    @Column(name = "status") private String status;
+class NotificationTemplate extends TenantEntity {
+    @Column(name = "code", nullable = false, length = 100) private String code;
+    @Column(name = "channel", nullable = false, length = 40) private String channel;
+    @Column(name = "locale", nullable = false, length = 20) private String locale;
+    @Column(name = "template_version", nullable = false) private Integer templateVersion;
+    @Column(name = "subject_template", length = 500) private String subjectTemplate;
+    @Lob @Column(name = "body_template", nullable = false) private String bodyTemplate;
+    @Column(name = "status", nullable = false, length = 40) private String status;
 }
 
 @Getter @Setter @NoArgsConstructor @Entity
 @Table(name = "notification", indexes = @Index(name = "idx_notification_business", columnList = "business_id"))
-class Notification extends BaseEntity {
+class Notification extends TenantEntity {
     @Column(name = "customer_id") private UUID customerId;
-    @Column(name = "recipient") private String recipient;
-    @Column(name = "channel") private String channel;
+    @Column(name = "recipient", nullable = false, length = 500) private String recipient;
+    @Column(name = "channel", nullable = false, length = 40) private String channel;
     @Column(name = "notification_template_id") private UUID notificationTemplateId;
-    @Lob @Column(name = "payload_json") private String payloadJson;
-    @Column(name = "status") private String status;
-    @Column(name = "attempt_count") private Integer attemptCount;
+    @Lob @Column(name = "payload_json", nullable = false) private String payloadJson;
+    @Column(name = "status", nullable = false, length = 40) private String status;
+    @Column(name = "attempt_count", nullable = false) private Integer attemptCount;
     @Column(name = "next_attempt_at") private Instant nextAttemptAt;
     @Column(name = "sent_at") private Instant sentAt;
-    @Column(name = "provider_message_id") private String providerMessageId;
+    @Column(name = "provider_message_id", length = 255) private String providerMessageId;
     @Lob @Column(name = "last_error") private String lastError;
 }
 
 @Getter @Setter @NoArgsConstructor @Entity
 @Table(name = "customer_feedback", indexes = @Index(name = "idx_customer_feedback_business", columnList = "business_id"))
-class CustomerFeedback extends BaseEntity {
-    @Column(name = "customer_id") private UUID customerId;
+class CustomerFeedback extends TenantEntity {
+    @Column(name = "customer_id", nullable = false) private UUID customerId;
     @Column(name = "job_id") private UUID jobId;
-    @Column(name = "type") private String type;
+    @Column(name = "type", nullable = false, length = 60) private String type;
     @Column(name = "rating") private Integer rating;
     @Lob @Column(name = "comment") private String comment;
-    @Column(name = "publication_consent") private Boolean publicationConsent;
-    @Column(name = "status") private String status;
+    @Column(name = "publication_consent", nullable = false) private Boolean publicationConsent;
+    @Column(name = "status", nullable = false, length = 40) private String status;
     @Lob @Column(name = "company_response") private String companyResponse;
     @Column(name = "responded_by") private UUID respondedBy;
     @Column(name = "responded_at") private Instant respondedAt;
