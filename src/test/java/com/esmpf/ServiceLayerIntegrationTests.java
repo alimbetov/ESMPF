@@ -18,6 +18,7 @@ import com.esmpf.shared.tenant.TenantContext;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -39,6 +40,7 @@ class ServiceLayerIntegrationTests {
     private final EquipmentService equipmentService;
     private final MutableTenantContext tenantContext;
 
+    @Autowired
     ServiceLayerIntegrationTests(
             CustomerService customerService,
             CatalogService catalogService,
