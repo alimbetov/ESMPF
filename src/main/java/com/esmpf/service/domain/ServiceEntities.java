@@ -1,6 +1,6 @@
 package com.esmpf.service.domain;
 
-import com.esmpf.shared.persistence.BaseEntity;
+import com.esmpf.shared.persistence.TenantEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Index;
@@ -16,7 +16,7 @@ import lombok.Setter;
 
 @Getter @Setter @NoArgsConstructor @Entity
 @Table(name = "service_request", indexes = @Index(name = "idx_service_request_business", columnList = "business_id"))
-class ServiceRequest extends BaseEntity {
+class ServiceRequest extends TenantEntity {
     @Column(name = "customer_id") private UUID customerId;
     @Column(name = "service_location_id") private UUID serviceLocationId;
     @Column(name = "equipment_id") private UUID equipmentId;
@@ -31,7 +31,7 @@ class ServiceRequest extends BaseEntity {
 
 @Getter @Setter @NoArgsConstructor @Entity
 @Table(name = "service_job", indexes = @Index(name = "idx_service_job_business", columnList = "business_id"))
-class ServiceJob extends BaseEntity {
+class ServiceJob extends TenantEntity {
     @Column(name = "request_id") private UUID requestId;
     @Column(name = "maintenance_occurrence_id") private UUID maintenanceOccurrenceId;
     @Column(name = "customer_id") private UUID customerId;
@@ -52,7 +52,7 @@ class ServiceJob extends BaseEntity {
 
 @Getter @Setter @NoArgsConstructor @Entity
 @Table(name = "job_visit", indexes = @Index(name = "idx_job_visit_business", columnList = "business_id"))
-class JobVisit extends BaseEntity {
+class JobVisit extends TenantEntity {
     @Column(name = "job_id") private UUID jobId;
     @Column(name = "scheduled_start") private Instant scheduledStart;
     @Column(name = "scheduled_end") private Instant scheduledEnd;
@@ -67,7 +67,7 @@ class JobVisit extends BaseEntity {
 
 @Getter @Setter @NoArgsConstructor @Entity
 @Table(name = "job_execution", indexes = @Index(name = "idx_job_execution_business", columnList = "business_id"))
-class JobExecution extends BaseEntity {
+class JobExecution extends TenantEntity {
     @Column(name = "job_id") private UUID jobId;
     @Column(name = "visit_id") private UUID visitId;
     @Column(name = "checklist_template_id") private UUID checklistTemplateId;
@@ -82,7 +82,7 @@ class JobExecution extends BaseEntity {
 
 @Getter @Setter @NoArgsConstructor @Entity
 @Table(name = "work_report", indexes = @Index(name = "idx_work_report_business", columnList = "business_id"))
-class WorkReport extends BaseEntity {
+class WorkReport extends TenantEntity {
     @Column(name = "job_id") private UUID jobId;
     @Column(name = "visit_id") private UUID visitId;
     @Column(name = "job_execution_id") private UUID jobExecutionId;
@@ -99,7 +99,7 @@ class WorkReport extends BaseEntity {
 
 @Getter @Setter @NoArgsConstructor @Entity
 @Table(name = "recommendation", indexes = @Index(name = "idx_recommendation_business", columnList = "business_id"))
-class Recommendation extends BaseEntity {
+class Recommendation extends TenantEntity {
     @Column(name = "equipment_id") private UUID equipmentId;
     @Column(name = "source_job_id") private UUID sourceJobId;
     @Lob @Column(name = "description") private String description;
@@ -111,32 +111,32 @@ class Recommendation extends BaseEntity {
 
 @Getter @Setter @NoArgsConstructor @Entity
 @Table(name = "material_catalog_item", indexes = @Index(name = "idx_material_catalog_item_business", columnList = "business_id"))
-class MaterialCatalogItem extends BaseEntity {
+class MaterialCatalogItem extends TenantEntity {
     @Column(name = "code") private String code;
     @Column(name = "name") private String name;
     @Column(name = "unit_code") private String unitCode;
-    @Column(name = "default_price") private BigDecimal defaultPrice;
-    @Column(name = "currency") private String currency;
+    @Column(name = "default_price", precision = 19, scale = 4) private BigDecimal defaultPrice;
+    @Column(name = "currency", length = 3) private String currency;
     @Column(name = "active") private Boolean active;
 }
 
 @Getter @Setter @NoArgsConstructor @Entity
 @Table(name = "job_material", indexes = @Index(name = "idx_job_material_business", columnList = "business_id"))
-class JobMaterial extends BaseEntity {
+class JobMaterial extends TenantEntity {
     @Column(name = "job_id") private UUID jobId;
     @Column(name = "material_catalog_item_id") private UUID materialCatalogItemId;
     @Column(name = "type") private String type;
     @Lob @Column(name = "description") private String description;
-    @Column(name = "quantity") private BigDecimal quantity;
+    @Column(name = "quantity", precision = 19, scale = 4) private BigDecimal quantity;
     @Column(name = "unit_code") private String unitCode;
-    @Column(name = "unit_price") private BigDecimal unitPrice;
-    @Column(name = "currency") private String currency;
+    @Column(name = "unit_price", precision = 19, scale = 4) private BigDecimal unitPrice;
+    @Column(name = "currency", length = 3) private String currency;
     @Column(name = "source") private String source;
 }
 
 @Getter @Setter @NoArgsConstructor @Entity
 @Table(name = "service_agreement", indexes = @Index(name = "idx_service_agreement_business", columnList = "business_id"))
-class ServiceAgreement extends BaseEntity {
+class ServiceAgreement extends TenantEntity {
     @Column(name = "customer_id") private UUID customerId;
     @Column(name = "number") private String number;
     @Column(name = "type") private String type;
@@ -152,7 +152,7 @@ class ServiceAgreement extends BaseEntity {
 
 @Getter @Setter @NoArgsConstructor @Entity
 @Table(name = "warranty_case", indexes = @Index(name = "idx_warranty_case_business", columnList = "business_id"))
-class WarrantyCase extends BaseEntity {
+class WarrantyCase extends TenantEntity {
     @Column(name = "equipment_id") private UUID equipmentId;
     @Column(name = "job_id") private UUID jobId;
     @Column(name = "source") private String source;
@@ -165,7 +165,7 @@ class WarrantyCase extends BaseEntity {
 
 @Getter @Setter @NoArgsConstructor @Entity
 @Table(name = "mobile_device", indexes = @Index(name = "idx_mobile_device_business", columnList = "business_id"))
-class MobileDevice extends BaseEntity {
+class MobileDevice extends TenantEntity {
     @Column(name = "user_id") private UUID userId;
     @Column(name = "device_identifier") private String deviceIdentifier;
     @Column(name = "platform") private String platform;
@@ -177,7 +177,7 @@ class MobileDevice extends BaseEntity {
 
 @Getter @Setter @NoArgsConstructor @Entity
 @Table(name = "sync_operation", indexes = @Index(name = "idx_sync_operation_business", columnList = "business_id"))
-class SyncOperation extends BaseEntity {
+class SyncOperation extends TenantEntity {
     @Column(name = "device_id") private UUID deviceId;
     @Column(name = "client_operation_id") private String clientOperationId;
     @Column(name = "operation_type") private String operationType;
