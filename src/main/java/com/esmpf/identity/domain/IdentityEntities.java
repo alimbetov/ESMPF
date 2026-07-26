@@ -5,13 +5,14 @@ import com.esmpf.shared.persistence.TenantEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Index;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Getter
 @Setter
@@ -25,7 +26,7 @@ class Business extends BaseEntity {
     @Column(name = "default_language", nullable = false, length = 10) private String defaultLanguage;
     @Column(name = "currency", nullable = false, length = 3) private String currency;
     @Column(name = "status", nullable = false, length = 40) private String status;
-    @Lob @Column(name = "settings_json") private String settingsJson;
+    @JdbcTypeCode(SqlTypes.JSON) @Column(name = "settings_json", columnDefinition = "jsonb") private String settingsJson;
 }
 
 @Getter
