@@ -16,4 +16,15 @@ jobs:
           java-version: '21'
           cache: maven
       - name: Test
-        run: mvn --batch-mode --update-snapshots verify
+        shell: bash
+        run: |
+          set -o pipefail
+          mvn --batch-mode --update-snapshots verify 2>&1 | tee maven-verify.log
+      - name: Upload Maven verification log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maven-verify-log
+          path: maven-verify.log
+          if-no-files-found: error
+          retention-days: 7
