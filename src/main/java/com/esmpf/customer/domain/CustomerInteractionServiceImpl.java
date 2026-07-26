@@ -29,7 +29,7 @@ class CustomerInteractionServiceImpl implements CustomerInteractionService {
         return response(repository.saveAndFlush(e));
     }
     @Override @Transactional(readOnly = true) public CustomerInteractionResponse getInteraction(UUID id) { return response(require(id)); }
-    @Override @Transactional(readOnly = true) public Page<CustomerInteractionResponse> listInteractions(UUID customerId, Pageable pageable) { customerReferences.requireCustomer(customerId); return repository.findAllByBusinessIdAndCustomerId(tenant(), customerId, pageable).map(this::response); }
+    @Override @Transactional(readOnly = true) public Page<CustomerInteractionResponse> listInteractions(UUID customerId, Pageable pageable) { customerReferences.requireCustomer(customerId); return repository.findAllByBusinessIdAndCustomerId(tenant(), customerId, pageable).map(CustomerInteractionServiceImpl::response); }
     private CustomerInteraction require(UUID id) { return repository.findByIdAndBusinessId(id, tenant()).orElseThrow(() -> new EntityNotFoundException("CustomerInteraction", id)); }
     private UUID tenant() { return tenantContext.requireBusinessId(); }
     private static CustomerInteractionResponse response(CustomerInteraction e) { return new CustomerInteractionResponse(e.getId(), e.getVersion(), e.getCustomerId(), e.getType(), e.getSubject(), e.getContent(), e.getOccurredAt(), e.getCreatedBy(), e.getRelatedSubjectType(), e.getRelatedSubjectId(), e.getCreatedAt(), e.getUpdatedAt()); }
