@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -100,20 +101,20 @@ class PostgresPersistenceIntegrationTests {
                 ) VALUES (?,?,now(),now(),0,?,?,'ACTIVE')
                 """, UUID.randomUUID(), businessB, customerId, "Wrong tenant"));
 
-        UUID first = UUID.randomUUID();
+        Timestamp expiresAt = Timestamp.from(Instant.now().plusSeconds(3600));
         jdbcTemplate.update("""
                 INSERT INTO idempotency_record(
                     id,business_id,created_at,updated_at,version,idempotency_key,
                     operation,request_hash,status,expires_at
                 ) VALUES (?,?,now(),now(),0,'same-key','CREATE_JOB','hash','IN_PROGRESS',?)
-                """, first, businessA, Instant.now().plusSeconds(3600));
+                """, UUID.randomUUID(), businessA, expiresAt);
 
         assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update("""
                 INSERT INTO idempotency_record(
                     id,business_id,created_at,updated_at,version,idempotency_key,
                     operation,request_hash,status,expires_at
                 ) VALUES (?,?,now(),now(),0,'same-key','CREATE_JOB','hash','IN_PROGRESS',?)
-                """, UUID.randomUUID(), businessA, Instant.now().plusSeconds(3600)));
+                """, UUID.randomUUID(), businessA, expiresAt));
     }
 
     @Test
@@ -154,7 +155,7 @@ class PostgresPersistenceIntegrationTests {
                     subject_id,token_hash,expires_at,max_uses,used_count
                 ) VALUES (?,?,now(),now(),0,'PUBLIC_DOCUMENT','DOCUMENT',?,?,?,5,0)
                 """, tokenId, businessId, UUID.randomUUID(), "hash-" + tokenId,
-                Instant.now().plusSeconds(3600));
+                Timestamp.from(Instant.now().plusSeconds(3600)));
 
         ExecutorService executor = Executors.newFixedThreadPool(10);
         try {
@@ -235,7 +236,7 @@ class PostgresPersistenceIntegrationTests {
                 INSERT INTO business(
                     id,created_at,updated_at,version,name,code,timezone,
                     default_language,currency,status
-                ) VALUES (?,now(),now(),0,? ,?,'Asia/Almaty','ru','KZT','ACTIVE')
+                ) VALUES (?,now(),now(),0,?,?,'Asia/Almaty','ru','KZT','ACTIVE')
                 """, id, code, code);
         return id;
     }
