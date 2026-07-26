@@ -51,7 +51,7 @@ class PlatformServiceImpl implements PlatformService {
     @Override @Transactional public DataJobResponse updateDataJobProgress(UUID id, long version, int progress) { DataJob e = requireDataJob(id); checkVersion("DataJob", id, version, e.getVersion()); requireStatus(e.getStatus(), "RUNNING"); if (progress < 0 || progress > 100) throw new IllegalArgumentException("progress must be 0..100"); e.setProgress(progress); return response(dataJobRepository.saveAndFlush(e)); }
     @Override @Transactional public DataJobResponse completeDataJob(UUID id, long version, UUID attachmentId) { DataJob e = requireDataJob(id); checkVersion("DataJob", id, version, e.getVersion()); requireStatus(e.getStatus(), "RUNNING"); documentReferences.requireAttachment(attachmentId); e.setResultAttachmentId(attachmentId); e.setProgress(100); e.setStatus("COMPLETED"); e.setCompletedAt(Instant.now()); return response(dataJobRepository.saveAndFlush(e)); }
     @Override @Transactional public DataJobResponse failDataJob(UUID id, long version, String errors) { DataJob e = requireDataJob(id); checkVersion("DataJob", id, version, e.getVersion()); requireStatus(e.getStatus(), "RUNNING"); e.setStatus("FAILED"); e.setErrorsJson(errors); e.setCompletedAt(Instant.now()); return response(dataJobRepository.saveAndFlush(e)); }
-    @Override @Transactional(readOnly = true) public Page<DataJobResponse> listDataJobs(Pageable p) { return dataJobRepository.findAllByBusinessId(tenant(), p).map(this::response); }
+    @Override @Transactional(readOnly = true) public Page<DataJobResponse> listDataJobs(Pageable p) { return dataJobRepository.findAllByBusinessId(tenant(), p).map(entity -> response(entity)); }
 
     @Override @Transactional
     public OutboxResponse appendOutboxEvent(OutboxCommand c) {
@@ -61,11 +61,11 @@ class PlatformServiceImpl implements PlatformService {
     @Override @Transactional public OutboxResponse markOutboxPublishing(UUID id, long version) { OutboxEvent e = requireOutbox(id); checkVersion("OutboxEvent", id, version, e.getVersion()); if (!("PENDING".equals(e.getStatus()) || "FAILED".equals(e.getStatus()))) throw new IllegalStateException("Outbox event not publishable"); e.setStatus("PUBLISHING"); e.setAttemptCount(e.getAttemptCount() + 1); e.setLastError(null); return response(outboxRepository.saveAndFlush(e)); }
     @Override @Transactional public OutboxResponse markOutboxPublished(UUID id, long version) { OutboxEvent e = requireOutbox(id); checkVersion("OutboxEvent", id, version, e.getVersion()); requireStatus(e.getStatus(), "PUBLISHING"); e.setStatus("PUBLISHED"); e.setPublishedAt(Instant.now()); e.setNextAttemptAt(null); return response(outboxRepository.saveAndFlush(e)); }
     @Override @Transactional public OutboxResponse markOutboxFailed(UUID id, long version, String error, Instant next) { OutboxEvent e = requireOutbox(id); checkVersion("OutboxEvent", id, version, e.getVersion()); requireStatus(e.getStatus(), "PUBLISHING"); e.setStatus("FAILED"); e.setLastError(error); e.setNextAttemptAt(next); return response(outboxRepository.saveAndFlush(e)); }
-    @Override @Transactional(readOnly = true) public Page<OutboxResponse> listOutbox(Pageable p) { return outboxRepository.findAllByBusinessId(tenant(), p).map(this::response); }
+    @Override @Transactional(readOnly = true) public Page<OutboxResponse> listOutbox(Pageable p) { return outboxRepository.findAllByBusinessId(tenant(), p).map(entity -> response(entity)); }
 
     @Override @Transactional
     public AuditResponse appendAudit(AuditCommand c) { AuditLog e = new AuditLog(); e.setBusinessId(tenant()); e.setActorType(c.actorType()); e.setActorId(c.actorId()); e.setAction(c.action()); e.setSubjectType(c.subjectType()); e.setSubjectId(c.subjectId()); e.setBeforeDataJson(c.beforeDataJson()); e.setAfterDataJson(c.afterDataJson()); e.setMetadataJson(c.metadataJson()); e.setOccurredAt(Instant.now()); return response(auditRepository.saveAndFlush(e)); }
-    @Override @Transactional(readOnly = true) public Page<AuditResponse> listAudit(Pageable p) { return auditRepository.findAllByBusinessId(tenant(), p).map(this::response); }
+    @Override @Transactional(readOnly = true) public Page<AuditResponse> listAudit(Pageable p) { return auditRepository.findAllByBusinessId(tenant(), p).map(entity -> response(entity)); }
 
     @Override @Transactional
     public IdempotencyResponse beginIdempotentOperation(IdempotencyCommand c) {
@@ -84,7 +84,7 @@ class PlatformServiceImpl implements PlatformService {
     @Override @Transactional public IntegrationResponse suspendIntegration(UUID id, long version) { return transitionIntegration(id, version, "SUSPENDED"); }
     @Override @Transactional public IntegrationResponse recordIntegrationSuccess(UUID id, long version) { IntegrationConnection e = requireIntegration(id); checkVersion("IntegrationConnection", id, version, e.getVersion()); e.setLastSuccessfulAt(Instant.now()); return response(integrationRepository.saveAndFlush(e)); }
     @Override @Transactional public IntegrationResponse recordIntegrationFailure(UUID id, long version) { IntegrationConnection e = requireIntegration(id); checkVersion("IntegrationConnection", id, version, e.getVersion()); e.setLastErrorAt(Instant.now()); return response(integrationRepository.saveAndFlush(e)); }
-    @Override @Transactional(readOnly = true) public Page<IntegrationResponse> listIntegrations(Pageable p) { return integrationRepository.findAllByBusinessId(tenant(), p).map(this::response); }
+    @Override @Transactional(readOnly = true) public Page<IntegrationResponse> listIntegrations(Pageable p) { return integrationRepository.findAllByBusinessId(tenant(), p).map(entity -> response(entity)); }
 
     @Override @Transactional
     public String allocateDocumentNumber(String type, int year, String prefix) {
