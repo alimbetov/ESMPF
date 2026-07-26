@@ -1,0 +1,19 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:esmpf;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        format_sql: true
+  liquibase:
+    enabled: false
+
+server:
+  error:
+    include-message: always
