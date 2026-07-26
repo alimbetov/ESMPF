@@ -31,7 +31,7 @@ class CommunicationServiceImpl implements CommunicationService {
         validateTemplate(command);
         if (templateRepository.existsByBusinessIdAndCodeIgnoreCaseAndChannelIgnoreCaseAndLocaleIgnoreCaseAndTemplateVersion(tenant(), command.code(), command.channel(), command.locale(), command.templateVersion())) throw new IllegalArgumentException("Notification template version already exists");
         NotificationTemplate entity = new NotificationTemplate(); entity.setBusinessId(tenant()); entity.setCode(command.code()); entity.setChannel(command.channel()); entity.setLocale(command.locale()); entity.setTemplateVersion(command.templateVersion()); entity.setSubjectTemplate(command.subjectTemplate()); entity.setBodyTemplate(command.bodyTemplate()); entity.setStatus("DRAFT");
-        return response(templateRepository.saveAndFlush(entity));
+        return response(entity = templateRepository.saveAndFlush(entity));
     }
     @Override @Transactional
     public NotificationTemplateResponse updateDraftTemplate(UUID id, NotificationTemplateCommand command) {
@@ -41,13 +41,12 @@ class CommunicationServiceImpl implements CommunicationService {
     }
     @Override @Transactional public NotificationTemplateResponse activateTemplate(UUID id, long version) { return transitionTemplate(id, version, "DRAFT", "ACTIVE"); }
     @Override @Transactional public NotificationTemplateResponse archiveTemplate(UUID id, long version) { NotificationTemplate entity = requireTemplate(id); checkVersion("NotificationTemplate", id, version, entity.getVersion()); entity.setStatus("ARCHIVED"); return response(templateRepository.saveAndFlush(entity)); }
-    @Override @Transactional(readOnly = true) public Page<NotificationTemplateResponse> listTemplates(Pageable pageable) { return templateRepository.findAllByBusinessId(tenant(), pageable).map(this::response); }
+    @Override @Transactional(readOnly = true) public Page<NotificationTemplateResponse> listTemplates(Pageable pageable) { return templateRepository.findAllByBusinessId(tenant(), pageable).map(entity -> response(entity)); }
 
     @Override @Transactional
     public NotificationResponse enqueueNotification(NotificationCommand command) {
         if (command.customerId() != null) customerReferences.requireCustomer(command.customerId());
-        NotificationTemplate template = null;
-        if (command.notificationTemplateId() != null) { template = requireTemplate(command.notificationTemplateId()); requireStatus(template.getStatus(), "ACTIVE"); if (!template.getChannel().equalsIgnoreCase(command.channel())) throw new IllegalArgumentException("Notification channel does not match template"); }
+        if (command.notificationTemplateId() != null) { NotificationTemplate template = requireTemplate(command.notificationTemplateId()); requireStatus(template.getStatus(), "ACTIVE"); if (!template.getChannel().equalsIgnoreCase(command.channel())) throw new IllegalArgumentException("Notification channel does not match template"); }
         if (command.recipient() == null || command.recipient().isBlank()) throw new IllegalArgumentException("recipient is required");
         Notification entity = new Notification(); entity.setBusinessId(tenant()); entity.setCustomerId(command.customerId()); entity.setRecipient(command.recipient()); entity.setChannel(command.channel()); entity.setNotificationTemplateId(command.notificationTemplateId()); entity.setPayloadJson(command.payloadJson()); entity.setStatus("QUEUED"); entity.setAttemptCount(0); entity.setNextAttemptAt(command.nextAttemptAt() == null ? Instant.now() : command.nextAttemptAt());
         return response(notificationRepository.saveAndFlush(entity));
@@ -55,7 +54,7 @@ class CommunicationServiceImpl implements CommunicationService {
     @Override @Transactional public NotificationResponse markSending(UUID id, long version) { Notification entity = requireNotification(id); checkVersion("Notification", id, version, entity.getVersion()); if (!("QUEUED".equals(entity.getStatus()) || "FAILED".equals(entity.getStatus()))) throw new IllegalStateException("Notification is not ready for sending"); entity.setStatus("SENDING"); entity.setAttemptCount(entity.getAttemptCount() + 1); entity.setLastError(null); return response(notificationRepository.saveAndFlush(entity)); }
     @Override @Transactional public NotificationResponse markSent(UUID id, long version, String providerMessageId) { Notification entity = requireNotification(id); checkVersion("Notification", id, version, entity.getVersion()); requireStatus(entity.getStatus(), "SENDING"); entity.setStatus("SENT"); entity.setSentAt(Instant.now()); entity.setProviderMessageId(providerMessageId); entity.setNextAttemptAt(null); return response(notificationRepository.saveAndFlush(entity)); }
     @Override @Transactional public NotificationResponse markFailed(UUID id, long version, String error, Instant nextAttemptAt) { Notification entity = requireNotification(id); checkVersion("Notification", id, version, entity.getVersion()); requireStatus(entity.getStatus(), "SENDING"); entity.setStatus("FAILED"); entity.setLastError(error); entity.setNextAttemptAt(nextAttemptAt); return response(notificationRepository.saveAndFlush(entity)); }
-    @Override @Transactional(readOnly = true) public Page<NotificationResponse> listNotifications(Pageable pageable) { return notificationRepository.findAllByBusinessId(tenant(), pageable).map(this::response); }
+    @Override @Transactional(readOnly = true) public Page<NotificationResponse> listNotifications(Pageable pageable) { return notificationRepository.findAllByBusinessId(tenant(), pageable).map(entity -> response(entity)); }
 
     @Override @Transactional
     public FeedbackResponse registerFeedback(FeedbackCommand command) {
@@ -67,7 +66,7 @@ class CommunicationServiceImpl implements CommunicationService {
     @Override @Transactional public FeedbackResponse respondFeedback(UUID id, long version, String responseText) { CustomerFeedback entity = requireFeedback(id); checkVersion("CustomerFeedback", id, version, entity.getVersion()); requireStatus(entity.getStatus(), "OPEN"); entity.setCompanyResponse(responseText); entity.setRespondedBy(tenantContext.requireUserId()); entity.setRespondedAt(Instant.now()); entity.setStatus("RESPONDED"); return response(feedbackRepository.saveAndFlush(entity)); }
     @Override @Transactional public FeedbackResponse resolveFeedback(UUID id, long version) { CustomerFeedback entity = requireFeedback(id); checkVersion("CustomerFeedback", id, version, entity.getVersion()); if (!("OPEN".equals(entity.getStatus()) || "RESPONDED".equals(entity.getStatus()))) throw new IllegalStateException("Feedback cannot be resolved"); entity.setStatus("RESOLVED"); entity.setResolvedAt(Instant.now()); return response(feedbackRepository.saveAndFlush(entity)); }
     @Override @Transactional public FeedbackResponse rejectFeedback(UUID id, long version, String responseText) { CustomerFeedback entity = requireFeedback(id); checkVersion("CustomerFeedback", id, version, entity.getVersion()); requireStatus(entity.getStatus(), "OPEN"); entity.setStatus("REJECTED"); entity.setCompanyResponse(responseText); entity.setRespondedBy(tenantContext.requireUserId()); entity.setRespondedAt(Instant.now()); entity.setResolvedAt(Instant.now()); return response(feedbackRepository.saveAndFlush(entity)); }
-    @Override @Transactional(readOnly = true) public Page<FeedbackResponse> listFeedback(Pageable pageable) { return feedbackRepository.findAllByBusinessId(tenant(), pageable).map(this::response); }
+    @Override @Transactional(readOnly = true) public Page<FeedbackResponse> listFeedback(Pageable pageable) { return feedbackRepository.findAllByBusinessId(tenant(), pageable).map(entity -> response(entity)); }
 
     private NotificationTemplateResponse transitionTemplate(UUID id, long version, String from, String to) { NotificationTemplate entity = requireTemplate(id); checkVersion("NotificationTemplate", id, version, entity.getVersion()); requireStatus(entity.getStatus(), from); entity.setStatus(to); return response(templateRepository.saveAndFlush(entity)); }
     private NotificationTemplate requireTemplate(UUID id) { return templateRepository.findByIdAndBusinessId(id, tenant()).orElseThrow(() -> new EntityNotFoundException("NotificationTemplate", id)); }
