@@ -7,12 +7,11 @@ import jakarta.persistence.MappedSuperclass;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Version;
+import java.time.Instant;
+import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.UuidGenerator;
-
-import java.time.Instant;
-import java.util.UUID;
 
 @Getter
 @Setter
@@ -22,9 +21,6 @@ public abstract class BaseEntity {
     @GeneratedValue
     @UuidGenerator
     private UUID id;
-
-    @Column(name = "business_id", nullable = false, updatable = false)
-    private UUID businessId;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -36,14 +32,14 @@ public abstract class BaseEntity {
     private long version;
 
     @PrePersist
-    void prePersist() {
+    protected void prePersist() {
         Instant now = Instant.now();
         createdAt = now;
         updatedAt = now;
     }
 
     @PreUpdate
-    void preUpdate() {
+    protected void preUpdate() {
         updatedAt = Instant.now();
     }
 }
