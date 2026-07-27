@@ -14,7 +14,7 @@ import java.util.Objects;
  * Simple pre-provisioned Google sign-in flow.
  *
  * Unknown Google accounts are not auto-created. On the first successful sign-in, an active
- * ESMPF user with the same verified normalized email is linked to the Google subject.
+ * ESMPF user with the same verified normalized email is atomically linked to the Google subject.
  */
 public final class DefaultAuthenticationService implements AuthenticationService {
 
@@ -61,16 +61,20 @@ public final class DefaultAuthenticationService implements AuthenticationService
     private AuthenticationUser linkPreProvisionedUser(GooglePrincipal google) {
         String normalizedEmail = google.email().trim().toLowerCase(Locale.ROOT);
         AuthenticationUser user = userGateway.findByNormalizedEmail(normalizedEmail)
-                .orElseThrow(() -> new SecurityAccessException("Google account is not provisioned in ESMPF"));
+                .orElseThrow(() -> new SecurityAccessException(
+                        "Google account is not provisioned in ESMPF"));
 
         requireActive(user);
-        if (user.hasGoogleIdentity() && !google.subject().equals(user.externalSubject())) {
-            throw new SecurityAccessException("ESMPF user is already linked to another Google account");
-        }
-        if (user.hasGoogleIdentity()) {
+
+        if (user.isGoogleIdentity(google.subject())) {
             return user;
         }
-        return userGateway.linkGoogleIdentity(user.id(), google.subject());
+        if (user.hasExternalIdentity()) {
+            throw new SecurityAccessException(
+                    "ESMPF user is already linked to another external identity");
+        }
+
+        return userGateway.linkGoogleIdentityIfAbsent(user.id(), google.subject());
     }
 
     private static void requireActive(AuthenticationUser user) {
