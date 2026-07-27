@@ -3,3 +3,5 @@ databaseChangeLog:
       file: db/changelog/db.changelog-master.sql
   - include:
       file: db/changelog/db.changelog-content.sql
+  - include:
+      file: db/changelog/db.changelog-rbac.sql
