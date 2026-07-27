@@ -8,7 +8,7 @@ JWT is intentionally minimal and identifies only the user:
 sub = userId
 ```
 
-`businessId`, roles and permissions are not trusted token claims. After JWT validation the server loads `UserAccount` and resolves the current business membership, roles and effective permissions from the database or a server-side cache.
+`businessId`, roles and permissions are not trusted token claims. After JWT validation the server loads `UserAccount` and resolves current access data server-side.
 
 ## Service inventory
 
@@ -36,7 +36,7 @@ Mandatory claims:
 
 - `iss`
 - `aud`
-- `sub` — user UUID
+- `sub` — internal user UUID
 - `iat`
 - `nbf`
 - `exp`
@@ -44,28 +44,62 @@ Mandatory claims:
 - `token_type=access`
 - `ver=1`
 
-The JWT does not contain:
+The JWT does not contain `business_id`, roles or permissions. This avoids stale authorization data and prevents token claims from becoming the source of truth for application access.
 
-- `business_id`
-- roles
-- permissions
+## Google Identity adaptation
 
-This avoids stale authorization data and prevents a token claim from becoming the source of truth for tenant membership or RBAC.
+Google is used only to prove an external identity. ESMPF always issues its own JWT after successful Google verification.
+
+```text
+Google credential
+  -> GoogleIdentityVerifier
+  -> verified Google subject and email
+  -> existing active ESMPF UserAccount
+  -> optional first-login link GOOGLE + subject
+  -> ESMPF JWT with sub = internal userId
+```
+
+The service foundation intentionally uses a simple pre-provisioned policy:
+
+- unknown Google accounts are rejected;
+- automatic user registration is not performed;
+- the first login may link an existing active user by verified normalized email;
+- subsequent logins resolve the user by stable Google `sub`;
+- an already linked user cannot be silently rebound to another Google subject.
+
+Application contracts prepared for future controllers:
+
+- `AuthenticationService.signInWithGoogle(...)`;
+- `GoogleIdentityVerifier`;
+- `AuthenticationUserGateway`;
+- `GoogleSignInCommand`;
+- `AuthenticationResponse`.
+
+A future controller only receives the Google Identity Services `credential`, builds `GoogleSignInCommand`, calls `AuthenticationService` and returns `AuthenticationResponse`. It must not decode or trust Google token fields itself.
 
 ## Runtime resolution
 
 ```text
-validated JWT
+validated ESMPF JWT
   -> userId
   -> UserAccount lookup
   -> active/status validation
-  -> business membership resolution
   -> roles and effective permissions resolution
   -> AuthenticatedActor
 ```
 
-`AuthenticatedActor` is a server-side runtime object containing `userId`, roles and permissions. Business scoping remains an internal persistence concern and is resolved from the authenticated user where required.
+`AuthenticatedActor` is a server-side runtime object containing `userId`, roles and permissions.
 
 ## Deliberate boundary
 
-This foundation does not yet install a servlet filter, enable `SecurityFilterChain`, create login/password endpoints or enforce `@PreAuthorize`. The next stage should add `permission`, `role_permission`, `user_role`, effective-permission resolution and then connect bearer-token authentication to the server-side principal resolver.
+This foundation does not yet:
+
+- create Spring MVC controllers;
+- install a servlet bearer-token filter;
+- enable `SecurityFilterChain`;
+- implement password login;
+- provide a concrete Google SDK adapter;
+- enforce `@PreAuthorize`;
+- auto-register unknown Google users.
+
+The next controller stage should add a concrete Google verifier bean configured with the Google Web Client ID, an `AuthenticationUserGateway` adapter over the identity persistence model, and the HTTP endpoint without changing the application service contract.
