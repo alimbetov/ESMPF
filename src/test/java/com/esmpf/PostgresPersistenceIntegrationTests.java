@@ -38,6 +38,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 })
 class PostgresPersistenceIntegrationTests {
 
+    private static final int EXPECTED_DOMAIN_TABLE_COUNT = 50;
+
     @Container
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine")
             .withDatabaseName("esmpf")
@@ -62,15 +64,9 @@ class PostgresPersistenceIntegrationTests {
     }
 
     @Test
-    void createsExactlyFortyNineDomainTablesAndCanReapplyLiquibase() throws Exception {
-        Integer tableCount = jdbcTemplate.queryForObject("""
-                SELECT count(*)
-                  FROM information_schema.tables
-                 WHERE table_schema = 'public'
-                   AND table_type = 'BASE TABLE'
-                   AND table_name NOT IN ('databasechangelog', 'databasechangeloglock')
-                """, Integer.class);
-        assertEquals(49, tableCount);
+    void createsExpectedDomainTablesAndCanReapplyLiquibase() throws Exception {
+        assertEquals(EXPECTED_DOMAIN_TABLE_COUNT, countDomainTables());
+        assertEquals(1, countTable("access_role"));
 
         SpringLiquibase liquibase = new SpringLiquibase();
         liquibase.setDataSource(dataSource);
@@ -78,14 +74,8 @@ class PostgresPersistenceIntegrationTests {
         liquibase.setShouldRun(true);
         liquibase.afterPropertiesSet();
 
-        Integer secondCount = jdbcTemplate.queryForObject("""
-                SELECT count(*)
-                  FROM information_schema.tables
-                 WHERE table_schema = 'public'
-                   AND table_type = 'BASE TABLE'
-                   AND table_name NOT IN ('databasechangelog', 'databasechangeloglock')
-                """, Integer.class);
-        assertEquals(49, secondCount);
+        assertEquals(EXPECTED_DOMAIN_TABLE_COUNT, countDomainTables());
+        assertEquals(1, countTable("access_role"));
     }
 
     @Test
@@ -242,6 +232,28 @@ class PostgresPersistenceIntegrationTests {
         } finally {
             executor.shutdownNow();
         }
+    }
+
+    private int countDomainTables() {
+        Integer count = jdbcTemplate.queryForObject("""
+                SELECT count(*)
+                  FROM information_schema.tables
+                 WHERE table_schema = 'public'
+                   AND table_type = 'BASE TABLE'
+                   AND table_name NOT IN ('databasechangelog', 'databasechangeloglock')
+                """, Integer.class);
+        return count == null ? 0 : count;
+    }
+
+    private int countTable(String tableName) {
+        Integer count = jdbcTemplate.queryForObject("""
+                SELECT count(*)
+                  FROM information_schema.tables
+                 WHERE table_schema = 'public'
+                   AND table_type = 'BASE TABLE'
+                   AND table_name = ?
+                """, Integer.class, tableName);
+        return count == null ? 0 : count;
     }
 
     private UUID createBusiness(String code) {
