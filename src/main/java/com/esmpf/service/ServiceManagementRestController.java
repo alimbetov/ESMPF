@@ -3,12 +3,13 @@ package com.esmpf.service;
 import static com.esmpf.service.ServiceManagementDtos.*;
 import static com.esmpf.web.ApiActionRequests.JsonRequest;
 import static com.esmpf.web.ApiActionRequests.ReasonRequest;
-import static com.esmpf.web.ApiActionRequests.TextRequest;
 import static com.esmpf.web.ApiActionRequests.VersionRequest;
 import static com.esmpf.web.ApiActionRequests.VisitCompleteRequest;
 import static com.esmpf.web.ApiActionRequests.VisitStartRequest;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -34,10 +35,11 @@ public class ServiceManagementRestController {
     @PostMapping("/service-jobs") @ResponseStatus(HttpStatus.CREATED)
     public ServiceJobResponse createJob(@Valid @RequestBody ServiceJobCreateCommand command) { return service.createJob(command); }
     @PostMapping("/service-requests/{requestId}/actions/convert-to-job") @ResponseStatus(HttpStatus.CREATED)
-    public ServiceJobResponse convertRequestToJob(@PathVariable UUID requestId,
-                                                   @RequestParam long requestVersion,
-                                                   @Valid @RequestBody ServiceJobCreateCommand command) {
-        return service.convertRequestToJob(requestId, requestVersion, command);
+    public ServiceJobResponse convertRequestToJob(
+            @PathVariable UUID requestId,
+            @Valid @RequestBody ConvertRequestToJobRequest request
+    ) {
+        return service.convertRequestToJob(requestId, request.requestVersion(), request.job());
     }
     @GetMapping("/service-jobs/{jobId}") public ServiceJobResponse getJob(@PathVariable UUID jobId) { return service.getJob(jobId); }
     @GetMapping("/service-jobs") public Page<ServiceJobResponse> listJobs(Pageable pageable) { return service.listJobs(pageable); }
@@ -64,4 +66,9 @@ public class ServiceManagementRestController {
     @PostMapping("/work-reports") @ResponseStatus(HttpStatus.CREATED)
     public WorkReportResponse createWorkReport(@Valid @RequestBody WorkReportCreateCommand command) { return service.createWorkReport(command); }
     @PostMapping("/work-reports/{reportId}/actions/approve") public WorkReportResponse approveWorkReport(@PathVariable UUID reportId, @Valid @RequestBody VersionRequest request) { return service.approveWorkReport(reportId, request.version()); }
+
+    public record ConvertRequestToJobRequest(
+            @Min(0) long requestVersion,
+            @NotNull @Valid ServiceJobCreateCommand job
+    ) {}
 }
