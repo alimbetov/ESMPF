@@ -54,12 +54,11 @@ class ServiceContractArchitectureTests {
     }
 
     @Test
-    void serviceContractsNeverExposeDomainEntitiesAsDirectResults() {
+    void serviceContractsNeverExposeDomainEntitiesAsResults() {
         for (Class<?> serviceContract : SERVICE_CONTRACTS) {
             for (Method method : serviceContract.getDeclaredMethods()) {
-                Package resultPackage = method.getReturnType().getPackage();
-                String packageName = resultPackage == null ? "" : resultPackage.getName();
-                assertFalse(packageName.contains(".domain"), method.toGenericString());
+                String genericResultType = method.getGenericReturnType().getTypeName();
+                assertFalse(genericResultType.contains(".domain."), method.toGenericString());
             }
         }
     }
