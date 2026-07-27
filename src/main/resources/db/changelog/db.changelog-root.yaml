@@ -1,0 +1,5 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/db.changelog-master.sql
+  - include:
+      file: db/changelog/db.changelog-content.sql
