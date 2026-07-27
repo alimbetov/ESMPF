@@ -7,15 +7,17 @@ import com.esmpf.content.ContentDtos.UpdateDraftArticleCommand;
 import com.esmpf.content.ContentService;
 import com.esmpf.content.ContentType;
 import com.esmpf.content.PublicationStatus;
+import com.esmpf.shared.exception.EntityNotFoundException;
+import com.esmpf.shared.exception.StaleEntityException;
 import com.esmpf.shared.tenant.TenantContext;
-import jakarta.persistence.EntityNotFoundException;
+import com.esmpf.shared.web.PageablePolicy;
 import java.time.Instant;
 import java.util.Locale;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +28,7 @@ class ContentServiceImpl implements ContentService {
 
     private final NewsArticleRepository repository;
     private final TenantContext tenantContext;
+    private final PageablePolicy pageablePolicy;
 
     @Override
     public ArticleResponse createArticle(CreateArticleCommand command) {
@@ -59,7 +62,7 @@ class ContentServiceImpl implements ContentService {
                         normalizeSlug(slug),
                         PublicationStatus.PUBLISHED,
                         Instant.now())
-                .orElseThrow(() -> new EntityNotFoundException("Published article not found: " + slug));
+                .orElseThrow(() -> new EntityNotFoundException("PublishedNewsArticle", UUID.nameUUIDFromBytes(slug.getBytes())));
         return toPublishedResponse(article);
     }
 
@@ -70,11 +73,16 @@ class ContentServiceImpl implements ContentService {
             ContentType type,
             Pageable pageable
     ) {
+        Pageable bounded = pageablePolicy.normalize(
+                pageable,
+                Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.desc("id")),
+                "slug", "title", "type", "status", "featured", "publishAt", "publishedAt",
+                "visibleUntil", "createdAt", "updatedAt", "id");
         return repository.findForAdministration(
                         tenantContext.requireBusinessId(),
                         status,
                         type,
-                        pageable)
+                        bounded)
                 .map(this::toArticleResponse);
     }
 
@@ -84,12 +92,16 @@ class ContentServiceImpl implements ContentService {
             ContentType type,
             Pageable pageable
     ) {
+        Pageable bounded = pageablePolicy.normalize(
+                pageable,
+                Sort.by(Sort.Order.desc("publishedAt"), Sort.Order.desc("id")),
+                "publishedAt", "title", "type", "featured", "visibleUntil", "id");
         return repository.findPublished(
                         tenantContext.requireBusinessId(),
                         PublicationStatus.PUBLISHED,
                         type,
                         Instant.now(),
-                        pageable)
+                        bounded)
                 .map(this::toPublishedResponse);
     }
 
@@ -173,7 +185,7 @@ class ContentServiceImpl implements ContentService {
 
     private NewsArticle requireArticle(UUID articleId) {
         return repository.findByIdAndBusinessId(articleId, tenantContext.requireBusinessId())
-                .orElseThrow(() -> new EntityNotFoundException("NewsArticle not found: " + articleId));
+                .orElseThrow(() -> new EntityNotFoundException("NewsArticle", articleId));
     }
 
     private void applyEditableFields(NewsArticle article, CreateArticleCommand command) {
@@ -201,9 +213,11 @@ class ContentServiceImpl implements ContentService {
 
     private void requireVersion(NewsArticle article, long expectedVersion) {
         if (article.getVersion() != expectedVersion) {
-            throw new OptimisticLockingFailureException(
-                    "NewsArticle version mismatch: expected " + expectedVersion
-                            + ", actual " + article.getVersion());
+            throw new StaleEntityException(
+                    "NewsArticle",
+                    article.getId(),
+                    expectedVersion,
+                    article.getVersion());
         }
     }
 
