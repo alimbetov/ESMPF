@@ -6,15 +6,21 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.esmpf.identity.RoleProvisioningService;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
-@Transactional
 class RoleProvisioningServiceTests {
 
     @Autowired
@@ -47,6 +53,34 @@ class RoleProvisioningServiceTests {
         assertTrue(reused.system());
         assertTrue(reused.active());
         assertEquals(1, countRoles(businessId, "TECHNICIAN"));
+    }
+
+    @Test
+    void provisionsOneRoleUnderConcurrentRequests() throws Exception {
+        UUID businessId = createBusiness();
+        ExecutorService executor = Executors.newFixedThreadPool(8);
+        try {
+            List<Callable<UUID>> tasks = new ArrayList<>();
+            for (int i = 0; i < 20; i++) {
+                tasks.add(() -> roleProvisioningService.ensureRole(
+                        businessId,
+                        "DISPATCHER",
+                        "Dispatcher",
+                        null,
+                        true).id());
+            }
+
+            List<Future<UUID>> futures = executor.invokeAll(tasks);
+            Set<UUID> roleIds = new HashSet<>();
+            for (Future<UUID> future : futures) {
+                roleIds.add(future.get());
+            }
+
+            assertEquals(1, roleIds.size());
+            assertEquals(1, countRoles(businessId, "DISPATCHER"));
+        } finally {
+            executor.shutdownNow();
+        }
     }
 
     @Test
