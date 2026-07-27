@@ -57,12 +57,13 @@ class ContentServiceImpl implements ContentService {
     @Transactional(readOnly = true)
     public PublishedArticleResponse getPublishedArticle(String slug) {
         UUID businessId = tenantContext.requireBusinessId();
+        String normalizedSlug = normalizeSlug(slug);
         NewsArticle article = repository.findPublishedBySlug(
                         businessId,
-                        normalizeSlug(slug),
+                        normalizedSlug,
                         PublicationStatus.PUBLISHED,
                         Instant.now())
-                .orElseThrow(() -> new EntityNotFoundException("PublishedNewsArticle", UUID.nameUUIDFromBytes(slug.getBytes())));
+                .orElseThrow(() -> new EntityNotFoundException("PublishedNewsArticle", normalizedSlug));
         return toPublishedResponse(article);
     }
 
