@@ -3,19 +3,28 @@ package com.esmpf.identity.domain;
 import com.esmpf.identity.RoleProvisioningService;
 import java.util.Locale;
 import java.util.UUID;
-import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
-@RequiredArgsConstructor
 class RoleProvisioningServiceImpl implements RoleProvisioningService {
 
     private final AccessRoleRepository repository;
+    private final TransactionTemplate requiresNewTransaction;
+
+    RoleProvisioningServiceImpl(
+            AccessRoleRepository repository,
+            PlatformTransactionManager transactionManager
+    ) {
+        this.repository = repository;
+        this.requiresNewTransaction = new TransactionTemplate(transactionManager);
+        this.requiresNewTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    }
 
     @Override
-    @Transactional
     public AccessRoleReference ensureRole(
             UUID businessId,
             String code,
@@ -43,16 +52,21 @@ class RoleProvisioningServiceImpl implements RoleProvisioningService {
             String description,
             boolean system
     ) {
-        AccessRole role = new AccessRole();
-        role.setBusinessId(businessId);
-        role.setCode(code);
-        role.setName(name);
-        role.setDescription(description);
-        role.setSystem(system);
-        role.setActive(true);
-
         try {
-            return toReference(repository.saveAndFlush(role));
+            AccessRoleReference created = requiresNewTransaction.execute(status -> {
+                AccessRole role = new AccessRole();
+                role.setBusinessId(businessId);
+                role.setCode(code);
+                role.setName(name);
+                role.setDescription(description);
+                role.setSystem(system);
+                role.setActive(true);
+                return toReference(repository.saveAndFlush(role));
+            });
+            if (created == null) {
+                throw new IllegalStateException("Role provisioning transaction returned no result");
+            }
+            return created;
         } catch (DataIntegrityViolationException exception) {
             return repository.findByBusinessIdAndCodeIgnoreCase(businessId, code)
                     .map(this::toReference)
