@@ -1,7 +1,6 @@
 package com.esmpf.shared.security;
 
 import java.util.Arrays;
-import java.util.UUID;
 
 /**
  * Application-layer authorization checks reusable by services and future method security.
@@ -9,13 +8,6 @@ import java.util.UUID;
 public final class AuthorizationGuard {
 
     private AuthorizationGuard() {
-    }
-
-    public static void requireBusiness(AuthenticatedActor actor, UUID businessId) {
-        requireActor(actor);
-        if (!actor.businessId().equals(businessId)) {
-            throw new SecurityAccessException("cross-tenant access is forbidden");
-        }
     }
 
     public static void requireRole(AuthenticatedActor actor, String role) {
