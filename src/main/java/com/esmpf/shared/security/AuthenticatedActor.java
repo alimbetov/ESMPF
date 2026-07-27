@@ -8,18 +8,17 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * Trusted identity established only after authentication and token validation.
+ * Trusted runtime principal resolved by the server after JWT validation.
+ * The token itself carries only userId; roles and permissions are loaded server-side.
  */
 public record AuthenticatedActor(
         UUID userId,
-        UUID businessId,
         Set<String> roles,
         Set<String> permissions
 ) {
 
     public AuthenticatedActor {
         Objects.requireNonNull(userId, "userId is required");
-        Objects.requireNonNull(businessId, "businessId is required");
         roles = normalizeAuthorities(roles);
         permissions = normalizeAuthorities(permissions);
     }
