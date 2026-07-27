@@ -2,6 +2,7 @@ package com.esmpf.web;
 
 import com.esmpf.shared.exception.EntityNotFoundException;
 import com.esmpf.shared.security.SecurityAccessException;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import java.net.URI;
 import java.util.LinkedHashMap;
@@ -18,34 +19,49 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class ApiExceptionHandler {
 
     @ExceptionHandler(EntityNotFoundException.class)
-    ProblemDetail notFound(EntityNotFoundException exception) {
-        return problem(HttpStatus.NOT_FOUND, "Resource not found", exception.getMessage());
+    ProblemDetail notFound(EntityNotFoundException exception, HttpServletRequest request) {
+        return problem(HttpStatus.NOT_FOUND, "Resource not found", exception.getMessage(),
+                "entity-not-found", request);
     }
 
     @ExceptionHandler(SecurityAccessException.class)
-    ProblemDetail forbidden(SecurityAccessException exception) {
-        return problem(HttpStatus.FORBIDDEN, "Access denied", exception.getMessage());
+    ProblemDetail forbidden(SecurityAccessException exception, HttpServletRequest request) {
+        return problem(HttpStatus.FORBIDDEN, "Access denied", exception.getMessage(),
+                "access-denied", request);
     }
 
     @ExceptionHandler(OptimisticLockingFailureException.class)
-    ProblemDetail optimisticLock(OptimisticLockingFailureException exception) {
-        return problem(HttpStatus.CONFLICT, "Concurrent modification", "The resource was changed by another request");
+    ProblemDetail optimisticLock(
+            OptimisticLockingFailureException exception,
+            HttpServletRequest request
+    ) {
+        return problem(HttpStatus.CONFLICT, "Concurrent modification",
+                "The resource was changed by another request",
+                "optimistic-lock-conflict", request);
     }
 
     @ExceptionHandler(IllegalStateException.class)
-    ProblemDetail invalidState(IllegalStateException exception) {
-        return problem(HttpStatus.CONFLICT, "Invalid resource state", exception.getMessage());
+    ProblemDetail invalidState(IllegalStateException exception, HttpServletRequest request) {
+        return problem(HttpStatus.CONFLICT, "Invalid resource state", exception.getMessage(),
+                "invalid-resource-state", request);
     }
 
-    @ExceptionHandler({IllegalArgumentException.class, ConstraintViolationException.class,
-            HttpMessageNotReadableException.class})
-    ProblemDetail badRequest(Exception exception) {
-        return problem(HttpStatus.BAD_REQUEST, "Invalid request", exception.getMessage());
+    @ExceptionHandler({IllegalArgumentException.class, ConstraintViolationException.class})
+    ProblemDetail badRequest(Exception exception, HttpServletRequest request) {
+        return problem(HttpStatus.BAD_REQUEST, "Invalid request", "Request parameters are invalid",
+                "invalid-request", request);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    ProblemDetail malformedBody(HttpMessageNotReadableException exception, HttpServletRequest request) {
+        return problem(HttpStatus.BAD_REQUEST, "Malformed request body",
+                "The request body cannot be parsed", "malformed-request-body", request);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    ProblemDetail validation(MethodArgumentNotValidException exception) {
-        ProblemDetail detail = problem(HttpStatus.BAD_REQUEST, "Validation failed", "One or more request fields are invalid");
+    ProblemDetail validation(MethodArgumentNotValidException exception, HttpServletRequest request) {
+        ProblemDetail detail = problem(HttpStatus.BAD_REQUEST, "Validation failed",
+                "One or more request fields are invalid", "validation-failed", request);
         Map<String, String> errors = new LinkedHashMap<>();
         exception.getBindingResult().getFieldErrors().forEach(error ->
                 errors.putIfAbsent(error.getField(), error.getDefaultMessage()));
@@ -53,10 +69,18 @@ public class ApiExceptionHandler {
         return detail;
     }
 
-    private static ProblemDetail problem(HttpStatus status, String title, String detail) {
+    private static ProblemDetail problem(
+            HttpStatus status,
+            String title,
+            String detail,
+            String code,
+            HttpServletRequest request
+    ) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail == null ? title : detail);
         problem.setTitle(title);
-        problem.setType(URI.create("https://esmpf.dev/problems/" + status.value()));
+        problem.setType(URI.create("https://esmpf.dev/problems/" + code));
+        problem.setProperty("code", code.toUpperCase().replace('-', '_'));
+        problem.setProperty("path", request.getRequestURI());
         return problem;
     }
 }
