@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.esmpf.catalog.CatalogService;
 import com.esmpf.commercial.CommercialService;
 import com.esmpf.communication.CommunicationService;
+import com.esmpf.content.ContentService;
 import com.esmpf.customer.CustomerInteractionService;
 import com.esmpf.customer.CustomerService;
 import com.esmpf.document.DocumentService;
@@ -34,7 +35,8 @@ class ServiceContractArchitectureTests {
             CommercialService.class,
             DocumentService.class,
             CommunicationService.class,
-            PlatformService.class
+            PlatformService.class,
+            ContentService.class
     );
 
     @Test
