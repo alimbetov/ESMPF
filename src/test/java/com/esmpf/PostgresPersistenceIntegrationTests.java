@@ -32,7 +32,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers
 @SpringBootTest(properties = {
         "spring.liquibase.enabled=true",
-        "spring.liquibase.change-log=classpath:db/changelog/db.changelog-master.sql",
+        "spring.liquibase.change-log=classpath:db/changelog/db.changelog-root.yaml",
         "spring.jpa.hibernate.ddl-auto=validate",
         "spring.jpa.open-in-view=false"
 })
@@ -62,7 +62,7 @@ class PostgresPersistenceIntegrationTests {
     }
 
     @Test
-    void createsExactlyFortyEightDomainTablesAndCanReapplyLiquibase() throws Exception {
+    void createsExactlyFortyNineDomainTablesAndCanReapplyLiquibase() throws Exception {
         Integer tableCount = jdbcTemplate.queryForObject("""
                 SELECT count(*)
                   FROM information_schema.tables
@@ -70,11 +70,11 @@ class PostgresPersistenceIntegrationTests {
                    AND table_type = 'BASE TABLE'
                    AND table_name NOT IN ('databasechangelog', 'databasechangeloglock')
                 """, Integer.class);
-        assertEquals(48, tableCount);
+        assertEquals(49, tableCount);
 
         SpringLiquibase liquibase = new SpringLiquibase();
         liquibase.setDataSource(dataSource);
-        liquibase.setChangeLog("classpath:db/changelog/db.changelog-master.sql");
+        liquibase.setChangeLog("classpath:db/changelog/db.changelog-root.yaml");
         liquibase.setShouldRun(true);
         liquibase.afterPropertiesSet();
 
@@ -85,7 +85,7 @@ class PostgresPersistenceIntegrationTests {
                    AND table_type = 'BASE TABLE'
                    AND table_name NOT IN ('databasechangelog', 'databasechangeloglock')
                 """, Integer.class);
-        assertEquals(48, secondCount);
+        assertEquals(49, secondCount);
     }
 
     @Test
@@ -115,6 +115,20 @@ class PostgresPersistenceIntegrationTests {
                     operation,request_hash,status,expires_at
                 ) VALUES (?,?,now(),now(),0,'same-key','CREATE_JOB','hash','IN_PROGRESS',?)
                 """, UUID.randomUUID(), businessA, expiresAt));
+    }
+
+    @Test
+    void enforcesTenantScopedCaseInsensitiveNewsSlugUniqueness() {
+        UUID businessA = createBusiness("CONTENT-A-" + UUID.randomUUID());
+        UUID businessB = createBusiness("CONTENT-B-" + UUID.randomUUID());
+        UUID authorId = UUID.randomUUID();
+
+        insertNewsArticle(businessA, authorId, "summer-service");
+
+        assertThrows(DataIntegrityViolationException.class,
+                () -> insertNewsArticle(businessA, authorId, "SUMMER-SERVICE"));
+
+        insertNewsArticle(businessB, authorId, "summer-service");
     }
 
     @Test
@@ -247,5 +261,14 @@ class PostgresPersistenceIntegrationTests {
                     id,business_id,created_at,updated_at,version,type,name,status
                 ) VALUES (?,?,now(),now(),0,'COMPANY','Customer','ACTIVE')
                 """, customerId, businessId);
+    }
+
+    private void insertNewsArticle(UUID businessId, UUID authorId, String slug) {
+        jdbcTemplate.update("""
+                INSERT INTO news_article(
+                    id,business_id,created_at,updated_at,version,slug,title,summary,body,
+                    type,status,featured,created_by_user_id
+                ) VALUES (?,?,now(),now(),0,?,'Title','Summary','Body','NEWS','DRAFT',false,?)
+                """, UUID.randomUUID(), businessId, slug, authorId);
     }
 }
