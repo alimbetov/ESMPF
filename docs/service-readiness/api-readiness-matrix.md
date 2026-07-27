@@ -1,5 +1,18 @@
 # API readiness matrix
 
+## Product scope for the current release
+
+The current ESMPF release is a service-operations platform focused on:
+
+- customer management;
+- equipment and service-location management;
+- intake and triage of service requests;
+- dispatching and execution of service jobs;
+- maintenance planning;
+- work reports, recommendations and customer communication.
+
+Online payment processing, payment-provider integration, payment confirmation and refunds are explicitly out of scope. Existing payment-domain code is retained as a deferred capability and must not drive the readiness verdict for the operational MVP.
+
 | Module / capability | Verdict | Controller stage | Required before publication |
 |---|---|---|---|
 | Customer CRUD/archive | READY_FOR_API | Core | validation, paging, error mapping, MockMvc |
@@ -19,9 +32,9 @@
 | Visits/executions/reports | NEEDS_PROOF | Core | schedule conflict and completion rollback proofs |
 | Identity administration | READY_FOR_API | Supporting | API DTOs; later RBAC restrictions |
 | Authentication/login | BLOCKED_BY_IMPLEMENTATION | Security | JWT issuer/resource-server design |
-| Estimates | READY_FOR_API | Supporting | rounding and duplicate-number HTTP proofs |
-| Invoices | NEEDS_PROOF | Supporting | currency and state-transition matrix |
-| Payments | NEEDS_REPAIR | Supporting | atomic invoice balance, duplicate external ID, concurrency tests |
+| Estimates/quotations | READY_FOR_API | Supporting | rounding, revision and duplicate-number HTTP proofs |
+| Invoices/accounting records | DEFERRED | Deferred commercial | not required for the operational MVP; no payment semantics |
+| Payments, confirmation and refunds | DEFERRED | No controller | excluded from the current product scope and from MVP readiness |
 | Report templates | READY_FOR_API | Supporting | draft/published immutability proofs |
 | Document metadata/status | READY_FOR_API | Supporting | authorization contract |
 | Document generation transitions | INTERNAL_ONLY | Workers | no public CRUD/controller |
@@ -35,6 +48,19 @@
 | Integration connections | NEEDS_PROOF | Supporting/admin | secret-reference redaction and health checks |
 | Mobile sync | NEEDS_PROOF | Supporting | idempotency, conflict and replay matrix |
 
+## Commercial boundary for the MVP
+
+The only commercial capability considered for the current API is a non-binding estimate/quotation used during request handling. It may describe proposed work and expected cost, but it must not:
+
+- initiate a financial transaction;
+- claim that money has been received;
+- confirm settlement;
+- refund funds;
+- store payment-provider credentials;
+- expose provider callback endpoints.
+
+Any future payment capability requires a separate product decision, threat model, accounting model, audit requirements and dedicated implementation stage.
+
 ## Controller admission rule
 
 An operation can enter a controller PR only when:
@@ -43,6 +69,7 @@ An operation can enter a controller PR only when:
 - tenant ownership is derived from trusted context;
 - the main positive and negative paths are proven;
 - mutations enforce optimistic version where applicable;
-- no known concurrency race remains;
+- no known concurrency race remains within the selected product scope;
 - failures can be mapped to a stable global API error;
-- the operation is not worker/internal infrastructure.
+- the operation is not worker/internal infrastructure;
+- the operation is not explicitly deferred from the current release.
