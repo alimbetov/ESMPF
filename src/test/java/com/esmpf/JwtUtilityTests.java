@@ -23,30 +23,20 @@ class JwtUtilityTests {
     private static final Instant NOW = Instant.parse("2026-07-27T12:00:00Z");
 
     @Test
-    void issuesAndValidatesAccessTokenWithTenantRolesAndPermissions() {
+    void issuesAndValidatesAccessTokenWithUserIdOnly() {
         UUID userId = UUID.randomUUID();
-        UUID businessId = UUID.randomUUID();
-        AuthenticatedActor actor = new AuthenticatedActor(
-                userId,
-                businessId,
-                Set.of("admin"),
-                Set.of("customer_read", "customer_update"));
 
         JwtUtility utility = utilityAt(NOW);
-        var validated = utility.validateAccessToken(utility.issueAccessToken(actor));
+        var validated = utility.validateAccessToken(utility.issueAccessToken(userId));
 
-        assertEquals(userId, validated.actor().userId());
-        assertEquals(businessId, validated.actor().businessId());
-        assertEquals(Set.of("ADMIN"), validated.actor().roles());
-        assertEquals(Set.of("CUSTOMER_READ", "CUSTOMER_UPDATE"),
-                validated.actor().permissions());
+        assertEquals(userId, validated.userId());
         assertTrue(validated.expiresAt().isAfter(validated.issuedAt()));
     }
 
     @Test
     void rejectsTamperedTokenAndWrongVerifierSecret() {
         JwtUtility issuer = utilityAt(NOW);
-        String token = issuer.issueAccessToken(actor());
+        String token = issuer.issueAccessToken(UUID.randomUUID());
         JwtUtility wrongVerifier = new JwtUtility(
                 "another-test-secret-with-at-least-thirty-two-bytes-987654321",
                 "esmpf",
@@ -63,7 +53,7 @@ class JwtUtilityTests {
 
     @Test
     void rejectsExpiredTokenAndWrongAudience() {
-        String token = utilityAt(NOW).issueAccessToken(actor());
+        String token = utilityAt(NOW).issueAccessToken(UUID.randomUUID());
         JwtUtility expiredVerifier = utilityAt(NOW.plus(Duration.ofMinutes(16)));
         JwtUtility wrongAudience = new JwtUtility(
                 SECRET,
@@ -91,16 +81,16 @@ class JwtUtilityTests {
     }
 
     @Test
-    void authorizationGuardPreventsCrossTenantAndMissingAuthority() {
-        AuthenticatedActor actor = actor();
+    void authorizationGuardUsesServerResolvedAuthorities() {
+        AuthenticatedActor actor = new AuthenticatedActor(
+                UUID.randomUUID(),
+                Set.of("ADMIN"),
+                Set.of("CUSTOMER_READ"));
 
-        AuthorizationGuard.requireBusiness(actor, actor.businessId());
         AuthorizationGuard.requireRole(actor, "admin");
         AuthorizationGuard.requirePermission(actor, "customer_read");
         AuthorizationGuard.requireAnyPermission(actor, "CUSTOMER_UPDATE", "CUSTOMER_READ");
 
-        assertThrows(SecurityAccessException.class,
-                () -> AuthorizationGuard.requireBusiness(actor, UUID.randomUUID()));
         assertThrows(SecurityAccessException.class,
                 () -> AuthorizationGuard.requireRole(actor, "OWNER"));
         assertThrows(SecurityAccessException.class,
@@ -115,13 +105,5 @@ class JwtUtilityTests {
                 Duration.ofMinutes(15),
                 Duration.ZERO,
                 Clock.fixed(instant, ZoneOffset.UTC));
-    }
-
-    private static AuthenticatedActor actor() {
-        return new AuthenticatedActor(
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                Set.of("ADMIN"),
-                Set.of("CUSTOMER_READ"));
     }
 }
