@@ -28,7 +28,7 @@ class CustomerServiceImpl implements CustomerService, CustomerReferenceQuery {
     public CustomerResponse createCustomer(CustomerCreateCommand command) {
         Customer entity = mapper.toEntity(command);
         entity.setBusinessId(tenantContext.requireBusinessId());
-        return mapper.toResponse(customerRepository.save(entity));
+        return mapper.toResponse(customerRepository.saveAndFlush(entity));
     }
 
     @Override
@@ -52,7 +52,7 @@ class CustomerServiceImpl implements CustomerService, CustomerReferenceQuery {
         requireVersion("Customer", entity.getId(), command.version(), entity.getVersion());
         requireEditable(entity.getStatus(), "Customer");
         mapper.update(command, entity);
-        return mapper.toResponse(entity);
+        return mapper.toResponse(customerRepository.saveAndFlush(entity));
     }
 
     @Override
@@ -61,7 +61,7 @@ class CustomerServiceImpl implements CustomerService, CustomerReferenceQuery {
         Customer entity = requireCustomerEntity(customerId);
         requireVersion("Customer", entity.getId(), version, entity.getVersion());
         entity.setStatus("ARCHIVED");
-        return mapper.toResponse(entity);
+        return mapper.toResponse(customerRepository.saveAndFlush(entity));
     }
 
     @Override
@@ -73,7 +73,7 @@ class CustomerServiceImpl implements CustomerService, CustomerReferenceQuery {
 
         ServiceLocation entity = mapper.toEntity(command);
         entity.setBusinessId(tenantContext.requireBusinessId());
-        return mapper.toResponse(locationRepository.save(entity));
+        return mapper.toResponse(locationRepository.saveAndFlush(entity));
     }
 
     @Override
@@ -103,7 +103,7 @@ class CustomerServiceImpl implements CustomerService, CustomerReferenceQuery {
         requireEditable(entity.getStatus(), "ServiceLocation");
         validateParent(entity.getCustomerId(), command.parentLocationId(), entity.getId());
         mapper.update(command, entity);
-        return mapper.toResponse(entity);
+        return mapper.toResponse(locationRepository.saveAndFlush(entity));
     }
 
     @Override
@@ -116,7 +116,7 @@ class CustomerServiceImpl implements CustomerService, CustomerReferenceQuery {
             throw new IllegalStateException("Service location has active child locations");
         }
         entity.setStatus("ARCHIVED");
-        return mapper.toResponse(entity);
+        return mapper.toResponse(locationRepository.saveAndFlush(entity));
     }
 
     @Override
