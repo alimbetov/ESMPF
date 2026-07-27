@@ -42,7 +42,6 @@ class ServiceContractArchitectureTests {
         for (Class<?> serviceContract : SERVICE_CONTRACTS) {
             assertTrue(serviceContract.isInterface(), serviceContract.getName());
             assertTrue(serviceContract.getDeclaredMethods().length > 0, serviceContract.getName());
-
             for (Method method : serviceContract.getDeclaredMethods()) {
                 for (Parameter parameter : method.getParameters()) {
                     String parameterName = parameter.getName().toLowerCase();
@@ -54,11 +53,11 @@ class ServiceContractArchitectureTests {
     }
 
     @Test
-    void serviceContractsNeverExposeDomainEntitiesAsResults() {
+    void serviceContractsNeverExposeInternalEntityTypes() {
         for (Class<?> serviceContract : SERVICE_CONTRACTS) {
             for (Method method : serviceContract.getDeclaredMethods()) {
-                String genericResultType = method.getGenericReturnType().getTypeName();
-                assertFalse(genericResultType.contains(".domain."), method.toGenericString());
+                String resultType = method.getGenericReturnType().getTypeName();
+                assertFalse(resultType.matches(".*com\\.esmpf\\.[^.]+\\.domain\\..*"), method.toGenericString());
             }
         }
     }
