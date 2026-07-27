@@ -13,19 +13,15 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
-import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 
 /**
- * Stateless HMAC access-token utility. Secrets must come from an external secret store.
+ * Minimal stateless HMAC access-token utility.
+ * The token identifies only the user. Business, roles and permissions are resolved server-side.
  */
 public final class JwtUtility {
 
-    public static final String BUSINESS_ID = "business_id";
-    public static final String ROLES = "roles";
-    public static final String PERMISSIONS = "permissions";
     public static final String TOKEN_TYPE = "token_type";
     public static final String TOKEN_VERSION = "ver";
     public static final String ACCESS_TOKEN = "access";
@@ -38,14 +34,8 @@ public final class JwtUtility {
     private final Duration clockSkew;
     private final Clock clock;
 
-    public JwtUtility(
-            String secret,
-            String issuer,
-            String audience,
-            Duration accessTokenTtl,
-            Duration clockSkew,
-            Clock clock
-    ) {
+    public JwtUtility(String secret, String issuer, String audience,
+                      Duration accessTokenTtl, Duration clockSkew, Clock clock) {
         this.secret = validateSecret(secret);
         this.issuer = requireText(issuer, "issuer");
         this.audience = requireText(audience, "audience");
@@ -54,29 +44,27 @@ public final class JwtUtility {
         this.clock = Objects.requireNonNull(clock, "clock is required");
     }
 
-    public String issueAccessToken(AuthenticatedActor actor) {
-        Objects.requireNonNull(actor, "actor is required");
+    public String issueAccessToken(UUID userId) {
+        Objects.requireNonNull(userId, "userId is required");
         Instant issuedAt = clock.instant();
         Instant expiresAt = issuedAt.plus(accessTokenTtl);
-        String tokenId = UUID.randomUUID().toString();
 
         JWTClaimsSet claims = new JWTClaimsSet.Builder()
                 .issuer(issuer)
                 .audience(audience)
-                .subject(actor.userId().toString())
-                .jwtID(tokenId)
+                .subject(userId.toString())
+                .jwtID(UUID.randomUUID().toString())
                 .issueTime(Date.from(issuedAt))
                 .notBeforeTime(Date.from(issuedAt))
                 .expirationTime(Date.from(expiresAt))
-                .claim(BUSINESS_ID, actor.businessId().toString())
-                .claim(ROLES, actor.roles().stream().sorted().toList())
-                .claim(PERMISSIONS, actor.permissions().stream().sorted().toList())
                 .claim(TOKEN_TYPE, ACCESS_TOKEN)
                 .claim(TOKEN_VERSION, CURRENT_VERSION)
                 .build();
 
         SignedJWT jwt = new SignedJWT(
-                new JWSHeader.Builder(JWSAlgorithm.HS256).type(com.nimbusds.jose.JOSEObjectType.JWT).build(),
+                new JWSHeader.Builder(JWSAlgorithm.HS256)
+                        .type(com.nimbusds.jose.JOSEObjectType.JWT)
+                        .build(),
                 claims);
         try {
             jwt.sign(new MACSigner(secret));
@@ -96,20 +84,16 @@ public final class JwtUtility {
             if (!jwt.verify(new MACVerifier(secret))) {
                 throw invalid("invalid JWT signature");
             }
+
             JWTClaimsSet claims = jwt.getJWTClaimsSet();
             validateRegisteredClaims(claims);
-
             UUID userId = parseUuid(claims.getSubject(), "sub");
-            UUID businessId = parseUuid(claims.getStringClaim(BUSINESS_ID), BUSINESS_ID);
-            Set<String> roles = Set.copyOf(requiredStringList(claims, ROLES));
-            Set<String> permissions = Set.copyOf(requiredStringList(claims, PERMISSIONS));
-            AuthenticatedActor actor = new AuthenticatedActor(userId, businessId, roles, permissions);
 
             return new ValidatedJwt(
                     claims.getJWTID(),
                     claims.getIssueTime().toInstant(),
                     claims.getExpirationTime().toInstant(),
-                    actor);
+                    userId);
         } catch (ParseException | JOSEException | IllegalArgumentException exception) {
             if (exception instanceof SecurityAccessException accessException) {
                 throw accessException;
@@ -151,15 +135,6 @@ public final class JwtUtility {
         if (!expiresAt.toInstant().isAfter(now.minus(clockSkew))) {
             throw invalid("token has expired");
         }
-    }
-
-    private static List<String> requiredStringList(JWTClaimsSet claims, String name)
-            throws ParseException {
-        List<String> values = claims.getStringListClaim(name);
-        if (values == null) {
-            throw invalid(name + " claim is required");
-        }
-        return values;
     }
 
     private static UUID parseUuid(String value, String claim) {
@@ -214,7 +189,7 @@ public final class JwtUtility {
             String tokenId,
             Instant issuedAt,
             Instant expiresAt,
-            AuthenticatedActor actor
+            UUID userId
     ) {
     }
 }
