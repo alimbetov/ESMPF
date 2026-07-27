@@ -1,22 +1,14 @@
 package com.esmpf.shared.security;
 
-import com.esmpf.shared.tenant.TenantContext;
 import java.util.UUID;
 
 /**
- * Security-ready replacement contract for anonymous tenant lookup.
- * A future authentication filter will provide the validated actor implementation.
+ * Provides the authenticated server-side principal for the current execution.
  */
-public interface AuthenticatedActorContext extends TenantContext {
+public interface AuthenticatedActorContext {
 
     AuthenticatedActor requireActor();
 
-    @Override
-    default UUID requireBusinessId() {
-        return requireActor().businessId();
-    }
-
-    @Override
     default UUID requireUserId() {
         return requireActor().userId();
     }
