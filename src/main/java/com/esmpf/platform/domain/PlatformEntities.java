@@ -4,13 +4,14 @@ import com.esmpf.shared.persistence.TenantEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Index;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Getter @Setter @NoArgsConstructor @Entity
 @Table(name = "public_access_token", indexes = @Index(name = "idx_public_access_token_business", columnList = "business_id"))
@@ -34,9 +35,9 @@ class DataJob extends TenantEntity {
     @Column(name = "status", nullable = false, length = 40) private String status;
     @Column(name = "source_attachment_id") private UUID sourceAttachmentId;
     @Column(name = "result_attachment_id") private UUID resultAttachmentId;
-    @Lob @Column(name = "configuration_json") private String configurationJson;
+    @JdbcTypeCode(SqlTypes.JSON) @Column(name = "configuration_json", columnDefinition = "jsonb") private String configurationJson;
     @Column(name = "progress", nullable = false) private Integer progress;
-    @Lob @Column(name = "errors_json") private String errorsJson;
+    @JdbcTypeCode(SqlTypes.JSON) @Column(name = "errors_json", columnDefinition = "jsonb") private String errorsJson;
     @Column(name = "completed_at") private Instant completedAt;
 }
 
@@ -47,12 +48,12 @@ class OutboxEvent extends TenantEntity {
     @Column(name = "aggregate_id", nullable = false) private UUID aggregateId;
     @Column(name = "event_type", nullable = false, length = 150) private String eventType;
     @Column(name = "event_version", nullable = false) private Integer eventVersion;
-    @Lob @Column(name = "payload_json", nullable = false) private String payloadJson;
+    @JdbcTypeCode(SqlTypes.JSON) @Column(name = "payload_json", nullable = false, columnDefinition = "jsonb") private String payloadJson;
     @Column(name = "status", nullable = false, length = 40) private String status;
     @Column(name = "published_at") private Instant publishedAt;
     @Column(name = "attempt_count", nullable = false) private Integer attemptCount;
     @Column(name = "next_attempt_at") private Instant nextAttemptAt;
-    @Lob @Column(name = "last_error") private String lastError;
+    @Column(name = "last_error", columnDefinition = "text") private String lastError;
 }
 
 @Getter @Setter @NoArgsConstructor @Entity
@@ -63,9 +64,9 @@ class AuditLog extends TenantEntity {
     @Column(name = "action", nullable = false, length = 150) private String action;
     @Column(name = "subject_type", nullable = false, length = 100) private String subjectType;
     @Column(name = "subject_id", nullable = false) private UUID subjectId;
-    @Lob @Column(name = "before_data_json") private String beforeDataJson;
-    @Lob @Column(name = "after_data_json") private String afterDataJson;
-    @Lob @Column(name = "metadata_json") private String metadataJson;
+    @JdbcTypeCode(SqlTypes.JSON) @Column(name = "before_data_json", columnDefinition = "jsonb") private String beforeDataJson;
+    @JdbcTypeCode(SqlTypes.JSON) @Column(name = "after_data_json", columnDefinition = "jsonb") private String afterDataJson;
+    @JdbcTypeCode(SqlTypes.JSON) @Column(name = "metadata_json", columnDefinition = "jsonb") private String metadataJson;
     @Column(name = "occurred_at", nullable = false) private Instant occurredAt;
 }
 
@@ -86,7 +87,7 @@ class IntegrationConnection extends TenantEntity {
     @Column(name = "type", nullable = false, length = 80) private String type;
     @Column(name = "name", nullable = false, length = 200) private String name;
     @Column(name = "status", nullable = false, length = 40) private String status;
-    @Lob @Column(name = "configuration_json") private String configurationJson;
+    @JdbcTypeCode(SqlTypes.JSON) @Column(name = "configuration_json", columnDefinition = "jsonb") private String configurationJson;
     @Column(name = "secret_reference", length = 500) private String secretReference;
     @Column(name = "last_successful_at") private Instant lastSuccessfulAt;
     @Column(name = "last_error_at") private Instant lastErrorAt;

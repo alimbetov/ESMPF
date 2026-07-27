@@ -4,7 +4,6 @@ import com.esmpf.shared.persistence.TenantEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Index;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -13,6 +12,8 @@ import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Getter @Setter @NoArgsConstructor @Entity
 @Table(name = "equipment", indexes = @Index(name = "idx_equipment_business", columnList = "business_id"))
@@ -30,8 +31,8 @@ class Equipment extends TenantEntity {
     @Column(name = "installation_date") private LocalDate installationDate;
     @Column(name = "commissioning_date") private LocalDate commissioningDate;
     @Column(name = "warranty_until") private LocalDate warrantyUntil;
-    @Lob @Column(name = "attributes_json") private String attributesJson;
-    @Lob @Column(name = "current_meter_values_json") private String currentMeterValuesJson;
+    @JdbcTypeCode(SqlTypes.JSON) @Column(name = "attributes_json", columnDefinition = "jsonb") private String attributesJson;
+    @JdbcTypeCode(SqlTypes.JSON) @Column(name = "current_meter_values_json", columnDefinition = "jsonb") private String currentMeterValuesJson;
 }
 
 @Getter @Setter @NoArgsConstructor @Entity
@@ -42,7 +43,7 @@ class EquipmentRelation extends TenantEntity {
     @Column(name = "relation_type", nullable = false, length = 80) private String relationType;
     @Column(name = "valid_from") private LocalDate validFrom;
     @Column(name = "valid_until") private LocalDate validUntil;
-    @Lob @Column(name = "description") private String description;
+    @Column(name = "description", columnDefinition = "text") private String description;
 }
 
 @Getter @Setter @NoArgsConstructor @Entity
@@ -53,7 +54,7 @@ class EquipmentIssue extends TenantEntity {
     @Column(name = "type", nullable = false, length = 80) private String type;
     @Column(name = "severity", nullable = false, length = 40) private String severity;
     @Column(name = "status", nullable = false, length = 40) private String status;
-    @Lob @Column(name = "description") private String description;
+    @Column(name = "description", columnDefinition = "text") private String description;
     @Column(name = "detected_at", nullable = false) private Instant detectedAt;
     @Column(name = "due_date") private LocalDate dueDate;
     @Column(name = "resolved_by_job_id") private UUID resolvedByJobId;

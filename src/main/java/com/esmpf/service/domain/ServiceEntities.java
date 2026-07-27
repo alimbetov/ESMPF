@@ -4,7 +4,6 @@ import com.esmpf.shared.persistence.TenantEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Index;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -13,6 +12,8 @@ import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Getter @Setter @NoArgsConstructor @Entity
 @Table(name = "service_request", indexes = @Index(name = "idx_service_request_business", columnList = "business_id"))
@@ -23,7 +24,7 @@ class ServiceRequest extends TenantEntity {
     @Column(name = "source") private String source;
     @Column(name = "priority") private String priority;
     @Column(name = "summary") private String summary;
-    @Lob @Column(name = "description") private String description;
+    @Column(name = "description", columnDefinition = "text") private String description;
     @Column(name = "status") private String status;
     @Column(name = "requested_at") private Instant requestedAt;
     @Column(name = "requested_by") private UUID requestedBy;
@@ -42,11 +43,11 @@ class ServiceJob extends TenantEntity {
     @Column(name = "status") private String status;
     @Column(name = "priority") private String priority;
     @Column(name = "title") private String title;
-    @Lob @Column(name = "description") private String description;
+    @Column(name = "description", columnDefinition = "text") private String description;
     @Column(name = "planned_start") private Instant plannedStart;
     @Column(name = "planned_end") private Instant plannedEnd;
     @Column(name = "lead_worker_id") private UUID leadWorkerId;
-    @Lob @Column(name = "assigned_worker_ids_json") private String assignedWorkerIdsJson;
+    @JdbcTypeCode(SqlTypes.JSON) @Column(name = "assigned_worker_ids_json", columnDefinition = "jsonb") private String assignedWorkerIdsJson;
     @Column(name = "blocked_reason") private String blockedReason;
 }
 
@@ -59,10 +60,10 @@ class JobVisit extends TenantEntity {
     @Column(name = "actual_start") private Instant actualStart;
     @Column(name = "actual_end") private Instant actualEnd;
     @Column(name = "status") private String status;
-    @Lob @Column(name = "worker_ids_json") private String workerIdsJson;
-    @Lob @Column(name = "arrival_data_json") private String arrivalDataJson;
-    @Lob @Column(name = "completion_data_json") private String completionDataJson;
-    @Lob @Column(name = "customer_confirmation_json") private String customerConfirmationJson;
+    @JdbcTypeCode(SqlTypes.JSON) @Column(name = "worker_ids_json", columnDefinition = "jsonb") private String workerIdsJson;
+    @JdbcTypeCode(SqlTypes.JSON) @Column(name = "arrival_data_json", columnDefinition = "jsonb") private String arrivalDataJson;
+    @JdbcTypeCode(SqlTypes.JSON) @Column(name = "completion_data_json", columnDefinition = "jsonb") private String completionDataJson;
+    @JdbcTypeCode(SqlTypes.JSON) @Column(name = "customer_confirmation_json", columnDefinition = "jsonb") private String customerConfirmationJson;
 }
 
 @Getter @Setter @NoArgsConstructor @Entity
@@ -72,8 +73,8 @@ class JobExecution extends TenantEntity {
     @Column(name = "visit_id") private UUID visitId;
     @Column(name = "checklist_template_id") private UUID checklistTemplateId;
     @Column(name = "template_version") private Integer templateVersion;
-    @Lob @Column(name = "schema_snapshot_json") private String schemaSnapshotJson;
-    @Lob @Column(name = "answers_json") private String answersJson;
+    @JdbcTypeCode(SqlTypes.JSON) @Column(name = "schema_snapshot_json", columnDefinition = "jsonb") private String schemaSnapshotJson;
+    @JdbcTypeCode(SqlTypes.JSON) @Column(name = "answers_json", columnDefinition = "jsonb") private String answersJson;
     @Column(name = "started_at") private Instant startedAt;
     @Column(name = "completed_at") private Instant completedAt;
     @Column(name = "completed_by") private UUID completedBy;
@@ -86,11 +87,11 @@ class WorkReport extends TenantEntity {
     @Column(name = "job_id") private UUID jobId;
     @Column(name = "visit_id") private UUID visitId;
     @Column(name = "job_execution_id") private UUID jobExecutionId;
-    @Lob @Column(name = "diagnosis") private String diagnosis;
-    @Lob @Column(name = "work_performed") private String workPerformed;
-    @Lob @Column(name = "result") private String result;
-    @Lob @Column(name = "materials_summary_json") private String materialsSummaryJson;
-    @Lob @Column(name = "measurements_summary_json") private String measurementsSummaryJson;
+    @Column(name = "diagnosis", columnDefinition = "text") private String diagnosis;
+    @Column(name = "work_performed", columnDefinition = "text") private String workPerformed;
+    @Column(name = "result", columnDefinition = "text") private String result;
+    @JdbcTypeCode(SqlTypes.JSON) @Column(name = "materials_summary_json", columnDefinition = "jsonb") private String materialsSummaryJson;
+    @JdbcTypeCode(SqlTypes.JSON) @Column(name = "measurements_summary_json", columnDefinition = "jsonb") private String measurementsSummaryJson;
     @Column(name = "customer_comment") private String customerComment;
     @Column(name = "completed_by") private UUID completedBy;
     @Column(name = "completed_at") private Instant completedAt;
@@ -102,7 +103,7 @@ class WorkReport extends TenantEntity {
 class Recommendation extends TenantEntity {
     @Column(name = "equipment_id") private UUID equipmentId;
     @Column(name = "source_job_id") private UUID sourceJobId;
-    @Lob @Column(name = "description") private String description;
+    @Column(name = "description", columnDefinition = "text") private String description;
     @Column(name = "priority") private String priority;
     @Column(name = "due_date") private LocalDate dueDate;
     @Column(name = "status") private String status;
@@ -126,7 +127,7 @@ class JobMaterial extends TenantEntity {
     @Column(name = "job_id") private UUID jobId;
     @Column(name = "material_catalog_item_id") private UUID materialCatalogItemId;
     @Column(name = "type") private String type;
-    @Lob @Column(name = "description") private String description;
+    @Column(name = "description", columnDefinition = "text") private String description;
     @Column(name = "quantity", precision = 19, scale = 4) private BigDecimal quantity;
     @Column(name = "unit_code") private String unitCode;
     @Column(name = "unit_price", precision = 19, scale = 4) private BigDecimal unitPrice;
@@ -143,10 +144,10 @@ class ServiceAgreement extends TenantEntity {
     @Column(name = "status") private String status;
     @Column(name = "valid_from") private LocalDate validFrom;
     @Column(name = "valid_until") private LocalDate validUntil;
-    @Lob @Column(name = "covered_equipment_ids_json") private String coveredEquipmentIdsJson;
-    @Lob @Column(name = "coverage_rules_json") private String coverageRulesJson;
-    @Lob @Column(name = "sla_rules_json") private String slaRulesJson;
-    @Lob @Column(name = "pricing_rules_json") private String pricingRulesJson;
+    @JdbcTypeCode(SqlTypes.JSON) @Column(name = "covered_equipment_ids_json", columnDefinition = "jsonb") private String coveredEquipmentIdsJson;
+    @JdbcTypeCode(SqlTypes.JSON) @Column(name = "coverage_rules_json", columnDefinition = "jsonb") private String coverageRulesJson;
+    @JdbcTypeCode(SqlTypes.JSON) @Column(name = "sla_rules_json", columnDefinition = "jsonb") private String slaRulesJson;
+    @JdbcTypeCode(SqlTypes.JSON) @Column(name = "pricing_rules_json", columnDefinition = "jsonb") private String pricingRulesJson;
     @Column(name = "attachment_id") private UUID attachmentId;
 }
 
@@ -157,7 +158,7 @@ class WarrantyCase extends TenantEntity {
     @Column(name = "job_id") private UUID jobId;
     @Column(name = "source") private String source;
     @Column(name = "status") private String status;
-    @Lob @Column(name = "description") private String description;
+    @Column(name = "description", columnDefinition = "text") private String description;
     @Column(name = "decision") private String decision;
     @Column(name = "opened_at") private Instant openedAt;
     @Column(name = "resolved_at") private Instant resolvedAt;

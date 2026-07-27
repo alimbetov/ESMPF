@@ -4,7 +4,6 @@ import com.esmpf.shared.persistence.TenantEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Index;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -13,6 +12,8 @@ import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Getter @Setter @NoArgsConstructor @Entity
 @Table(name = "maintenance_plan", indexes = @Index(name = "idx_maintenance_plan_business", columnList = "business_id"))
@@ -25,7 +26,7 @@ class MaintenancePlan extends TenantEntity {
     @Column(name = "next_due_date") private LocalDate nextDueDate;
     @Column(name = "next_due_meter_value", precision = 19, scale = 4) private BigDecimal nextDueMeterValue;
     @Column(name = "last_completed_at") private Instant lastCompletedAt;
-    @Lob @Column(name = "overrides_json") private String overridesJson;
+    @JdbcTypeCode(SqlTypes.JSON) @Column(name = "overrides_json", columnDefinition = "jsonb") private String overridesJson;
     @Column(name = "status", nullable = false, length = 40) private String status;
 }
 

@@ -4,7 +4,6 @@ import com.esmpf.shared.persistence.TenantEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Index;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -13,6 +12,8 @@ import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Getter @Setter @NoArgsConstructor @Entity
 @Table(name = "estimate", indexes = @Index(name = "idx_estimate_business", columnList = "business_id"))
@@ -21,12 +22,12 @@ class Estimate extends TenantEntity {
     @Column(name = "number", nullable = false, length = 100) private String number;
     @Column(name = "status", nullable = false, length = 40) private String status;
     @Column(name = "currency", nullable = false, length = 3) private String currency;
-    @Lob @Column(name = "lines_json", nullable = false) private String linesJson;
+    @JdbcTypeCode(SqlTypes.JSON) @Column(name = "lines_json", nullable = false, columnDefinition = "jsonb") private String linesJson;
     @Column(name = "subtotal", nullable = false, precision = 19, scale = 4) private BigDecimal subtotal;
     @Column(name = "discount", nullable = false, precision = 19, scale = 4) private BigDecimal discount;
     @Column(name = "tax", nullable = false, precision = 19, scale = 4) private BigDecimal tax;
     @Column(name = "total", nullable = false, precision = 19, scale = 4) private BigDecimal total;
-    @Lob @Column(name = "approval_data_json") private String approvalDataJson;
+    @JdbcTypeCode(SqlTypes.JSON) @Column(name = "approval_data_json", columnDefinition = "jsonb") private String approvalDataJson;
     @Column(name = "approved_at") private Instant approvedAt;
 }
 
@@ -38,7 +39,7 @@ class Invoice extends TenantEntity {
     @Column(name = "number", nullable = false, length = 100) private String number;
     @Column(name = "status", nullable = false, length = 40) private String status;
     @Column(name = "currency", nullable = false, length = 3) private String currency;
-    @Lob @Column(name = "lines_json", nullable = false) private String linesJson;
+    @JdbcTypeCode(SqlTypes.JSON) @Column(name = "lines_json", nullable = false, columnDefinition = "jsonb") private String linesJson;
     @Column(name = "subtotal", nullable = false, precision = 19, scale = 4) private BigDecimal subtotal;
     @Column(name = "tax", nullable = false, precision = 19, scale = 4) private BigDecimal tax;
     @Column(name = "total", nullable = false, precision = 19, scale = 4) private BigDecimal total;
@@ -58,5 +59,5 @@ class Payment extends TenantEntity {
     @Column(name = "status", nullable = false, length = 40) private String status;
     @Column(name = "paid_at") private Instant paidAt;
     @Column(name = "external_payment_id", length = 200) private String externalPaymentId;
-    @Lob @Column(name = "details_json") private String detailsJson;
+    @JdbcTypeCode(SqlTypes.JSON) @Column(name = "details_json", columnDefinition = "jsonb") private String detailsJson;
 }
