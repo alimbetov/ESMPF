@@ -1,72 +1,192 @@
 # Lifecycle readiness matrix
 
-## Service request
+This matrix prioritises the operational MVP path and identifies the lifecycle proofs required before REST publication.
 
-| Command | Expected source states | Target state | Audit verdict |
-|---|---|---|---|
-| triage | NEW | TRIAGED | READY_FOR_API |
-| accept | TRIAGED | ACCEPTED | READY_FOR_API |
-| reject | NEW, TRIAGED, ACCEPTED as explicitly implemented | REJECTED | NEEDS_PROOF for full forbidden-state matrix |
-| cancel | non-terminal states as explicitly implemented | CANCELLED | NEEDS_PROOF for full forbidden-state matrix |
-| convert to job | ACCEPTED | CONVERTED + new job | NEEDS_PROOF for rollback and duplicate conversion |
+## Service Request
 
-## Service job
+Expected supported transitions:
 
-| Command | Expected source states | Target state | Audit verdict |
-|---|---|---|---|
-| mark ready | DRAFT | READY | READY_FOR_API |
-| schedule | READY | SCHEDULED | NEEDS_PROOF for schedule conflicts |
-| start | READY/SCHEDULED as implemented | IN_PROGRESS | READY_FOR_API |
-| hold | IN_PROGRESS | WAITING | READY_FOR_API |
-| resume | WAITING | IN_PROGRESS | READY_FOR_API |
-| complete | IN_PROGRESS | COMPLETED | NEEDS_PROOF for execution/report prerequisites and rollback |
-| close | COMPLETED | CLOSED | NEEDS_PROOF |
-| cancel | allowed non-terminal states | CANCELLED | NEEDS_PROOF for compensation rules |
+```text
+NEW -> TRIAGED
+NEW -> CANCELLED
+TRIAGED -> ACCEPTED
+TRIAGED -> REJECTED
+TRIAGED -> CANCELLED
+ACCEPTED -> CONVERTED
+```
 
-## Job visit
+Required proofs:
 
-| Command | Expected source states | Target state | Audit verdict |
-|---|---|---|---|
-| plan | valid job state | PLANNED | NEEDS_PROOF for overlap policy |
-| start | PLANNED | IN_PROGRESS | READY_FOR_API |
-| complete | IN_PROGRESS | COMPLETED | NEEDS_PROOF for job aggregation and rollback |
-| cancel | PLANNED/IN_PROGRESS as implemented | CANCELLED | NEEDS_PROOF |
+- every supported transition;
+- rejected, cancelled and converted states reject incompatible commands;
+- stale version is rejected;
+- duplicate conversion is prevented;
+- conversion transaction rolls back completely when job creation fails;
+- related customer, location and equipment belong to the active tenant.
 
-## Maintenance plan
+Verdict: `NEEDS_PROOF` before Stage 4 publication.
 
-| Command | Expected source states | Target state | Audit verdict |
-|---|---|---|---|
-| activate | DRAFT/SUSPENDED as implemented | ACTIVE | READY_FOR_API |
-| suspend | ACTIVE | SUSPENDED | READY_FOR_API |
-| close | allowed non-terminal states | CLOSED | NEEDS_PROOF for outstanding occurrences |
+## Service Job
 
-## Maintenance occurrence
+Expected supported transitions:
 
-| Command | Expected source states | Target state | Audit verdict |
-|---|---|---|---|
-| generate | active plan + unique generation key | pending state | READY_FOR_API for manual command; worker-bound for automation |
-| link service job | unlinked occurrence | linked state | NEEDS_PROOF for rollback and duplicate link |
-| complete | valid linked/due state | COMPLETED | NEEDS_PROOF |
-| cancel | non-terminal state | CANCELLED | NEEDS_PROOF |
+```text
+DRAFT -> READY
+READY -> SCHEDULED
+SCHEDULED -> IN_PROGRESS
+IN_PROGRESS -> WAITING
+WAITING -> IN_PROGRESS
+IN_PROGRESS -> COMPLETED
+COMPLETED -> CLOSED
+eligible non-final states -> CANCELLED
+```
 
-## Estimate / invoice / payment
+Required proofs:
 
-| Aggregate | Transition set | Audit verdict |
-|---|---|---|
-| Estimate | draft → sent → approved/rejected | READY_FOR_API with remaining forbidden-state proofs |
-| Invoice | draft → issued → overdue/void | NEEDS_PROOF for currency, document and payment interactions |
-| Payment | registered → confirmed/failed/refunded | NEEDS_REPAIR because invoice balance update must be atomic |
+- readiness prerequisites;
+- schedule command consistency;
+- start policy;
+- hold/resume reason handling;
+- completion prerequisites;
+- close policy;
+- cancellation policy;
+- immutable final states;
+- stale version and rollback behaviour.
+
+Verdict: implementation exists; `NEEDS_PROOF` for full Stage 5 publication.
+
+## Job Visit
+
+Expected transitions:
+
+```text
+PLANNED -> IN_PROGRESS
+IN_PROGRESS -> COMPLETED
+PLANNED/IN_PROGRESS -> CANCELLED where policy permits
+```
+
+Required proofs:
+
+- planned time validation;
+- schedule-overlap policy;
+- double start/completion behaviour;
+- job-state compatibility;
+- tenant consistency;
+- stale version;
+- rollback when dependent updates fail.
+
+Verdict: `NEEDS_PROOF`.
+
+## Job Execution
+
+Expected transitions:
+
+```text
+STARTED -> COMPLETED
+```
+
+Required proofs:
+
+- eligible job state;
+- immutable checklist/template snapshot;
+- required answers where model supports them;
+- no duplicate completion;
+- stale version;
+- cross-tenant reference rejection;
+- rollback.
+
+Verdict: `NEEDS_PROOF`.
+
+## Work Report
+
+Expected transitions:
+
+```text
+DRAFT/CREATED -> APPROVED
+```
+
+Required proofs:
+
+- job ownership/state;
+- active/final report cardinality policy;
+- approved report immutability;
+- job completion prerequisite;
+- stale approval;
+- transaction rollback.
+
+Verdict: `NEEDS_PROOF`.
+
+## Maintenance Plan
+
+Expected transitions:
+
+```text
+DRAFT -> ACTIVE
+ACTIVE -> SUSPENDED
+SUSPENDED -> ACTIVE
+DRAFT/ACTIVE/SUSPENDED -> CLOSED where policy permits
+```
+
+Manual administration may be exposed in Stage 6 after HTTP contract tests. Automatic due processing remains Stage 8 worker functionality.
+
+Verdict: administration `READY_FOR_API`; automation `BLOCKED_BY_RUNTIME_ADAPTER`.
+
+## Maintenance Occurrence
+
+Expected transitions include job linking, completion and cancellation according to the current model.
+
+Required proofs:
+
+- deterministic generation-key deduplication;
+- link only compatible same-tenant job;
+- no duplicate or conflicting job link;
+- completion/cancellation policy;
+- stale version;
+- worker generation safety.
+
+Verdict: manual operations `NEEDS_PROOF`; automatic generation `BLOCKED_BY_RUNTIME_ADAPTER`.
 
 ## Templates
 
-Checklist, maintenance, report and notification templates all require explicit draft/published-or-active/archive transitions. Updates after publication/activation must be rejected and proven.
+Checklist, maintenance, report and notification templates use draft/published or draft/active lifecycles.
 
-## Worker-managed lifecycles
+Required invariant:
 
-The following state machines are valid application contracts but must remain internal until workers exist:
+```text
+published or active revision cannot be changed by a draft-update command
+```
 
-- generated document generation lifecycle;
-- notification delivery lifecycle;
-- outbox publication lifecycle;
-- data-job execution lifecycle;
-- integration health update lifecycle.
+Verdict: `NEEDS_PROOF` before affected Stage 6 controllers.
+
+## Notifications
+
+Template administration and notification enqueue are candidate supporting endpoints.
+
+Delivery transitions:
+
+```text
+QUEUED -> SENDING -> SENT
+SENDING -> FAILED/QUEUED according to retry policy
+terminal retry exhaustion -> DEAD_LETTER or terminal failure
+```
+
+Delivery transitions are `INTERNAL_ONLY` and belong to the Stage 8 worker.
+
+## Generated Documents
+
+Public/supporting operations may expose generation request and read-only status/metadata.
+
+Runtime transitions such as start, complete and fail generation are `INTERNAL_ONLY` and belong to Stage 8.
+
+## Commercial scope
+
+Estimate lifecycle may support non-binding quotations in Stage 6 after remaining state proofs.
+
+Invoice and payment lifecycles are `DEFERRED`. Payment registration, confirmation, failure and refund transitions are excluded from:
+
+- operational proofs;
+- REST/OpenAPI;
+- RBAC permissions;
+- UI routes;
+- workers;
+- operational MVP readiness criteria.
