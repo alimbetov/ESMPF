@@ -1,17 +1,22 @@
 package com.esmpf.catalog.domain;
 
 import static com.esmpf.catalog.CatalogDtos.*;
+import static com.esmpf.shared.cache.CacheNames.*;
 
 import com.esmpf.catalog.CatalogReferenceQuery;
 import com.esmpf.catalog.CatalogService;
 import com.esmpf.shared.exception.EntityNotFoundException;
 import com.esmpf.shared.exception.StaleEntityException;
 import com.esmpf.shared.tenant.TenantContext;
+import com.esmpf.shared.web.PageablePolicy;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,9 +31,11 @@ class CatalogServiceImpl implements CatalogService, CatalogReferenceQuery {
     private final MaintenanceTemplateRepository maintenanceTemplateRepository;
     private final UnitOfMeasureRepository unitRepository;
     private final CatalogMapper mapper;
+    private final PageablePolicy pageablePolicy;
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CATALOG_EQUIPMENT_TYPE, allEntries = true)
     public EquipmentTypeResponse createEquipmentType(EquipmentTypeCommand command) {
         UUID tenant = tenant();
         rejectDuplicate(equipmentTypeRepository.existsByBusinessIdAndCodeIgnoreCase(tenant, command.code()), "Equipment type code");
@@ -39,6 +46,7 @@ class CatalogServiceImpl implements CatalogService, CatalogReferenceQuery {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CATALOG_EQUIPMENT_TYPE, key = "@tenantContext.requireBusinessId().toString() + ':' + #id")
     public EquipmentTypeResponse getEquipmentType(UUID id) {
         return mapper.toResponse(requireEquipmentTypeEntity(id));
     }
@@ -46,11 +54,13 @@ class CatalogServiceImpl implements CatalogService, CatalogReferenceQuery {
     @Override
     @Transactional(readOnly = true)
     public Page<EquipmentTypeResponse> listEquipmentTypes(Pageable pageable) {
-        return equipmentTypeRepository.findAllByBusinessId(tenant(), pageable).map(mapper::toResponse);
+        Pageable bounded = pageablePolicy.normalize(pageable, Sort.by("code").ascending(), "code", "name", "category", "status", "createdAt", "updatedAt");
+        return equipmentTypeRepository.findAllByBusinessId(tenant(), bounded).map(mapper::toResponse);
     }
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CATALOG_EQUIPMENT_TYPE, allEntries = true)
     public EquipmentTypeResponse updateEquipmentType(UUID id, EquipmentTypeCommand command) {
         EquipmentType entity = requireEquipmentTypeEntity(id);
         checkVersion("EquipmentType", entity.getId(), command.version(), entity.getVersion());
@@ -64,6 +74,7 @@ class CatalogServiceImpl implements CatalogService, CatalogReferenceQuery {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CATALOG_EQUIPMENT_TYPE, allEntries = true)
     public EquipmentTypeResponse archiveEquipmentType(UUID id, long version) {
         EquipmentType entity = requireEquipmentTypeEntity(id);
         checkVersion("EquipmentType", id, version, entity.getVersion());
@@ -73,6 +84,7 @@ class CatalogServiceImpl implements CatalogService, CatalogReferenceQuery {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CATALOG_JOB_TYPE, allEntries = true)
     public JobTypeResponse createJobType(JobTypeCommand command) {
         UUID tenant = tenant();
         rejectDuplicate(jobTypeRepository.existsByBusinessIdAndCodeIgnoreCase(tenant, command.code()), "Job type code");
@@ -83,6 +95,7 @@ class CatalogServiceImpl implements CatalogService, CatalogReferenceQuery {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CATALOG_JOB_TYPE, key = "@tenantContext.requireBusinessId().toString() + ':' + #id")
     public JobTypeResponse getJobType(UUID id) {
         return mapper.toResponse(requireJobTypeEntity(id));
     }
@@ -90,11 +103,13 @@ class CatalogServiceImpl implements CatalogService, CatalogReferenceQuery {
     @Override
     @Transactional(readOnly = true)
     public Page<JobTypeResponse> listJobTypes(Pageable pageable) {
-        return jobTypeRepository.findAllByBusinessId(tenant(), pageable).map(mapper::toResponse);
+        Pageable bounded = pageablePolicy.normalize(pageable, Sort.by("code").ascending(), "code", "name", "category", "status", "createdAt", "updatedAt");
+        return jobTypeRepository.findAllByBusinessId(tenant(), bounded).map(mapper::toResponse);
     }
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CATALOG_JOB_TYPE, allEntries = true)
     public JobTypeResponse updateJobType(UUID id, JobTypeCommand command) {
         JobType entity = requireJobTypeEntity(id);
         checkVersion("JobType", id, command.version(), entity.getVersion());
@@ -108,6 +123,7 @@ class CatalogServiceImpl implements CatalogService, CatalogReferenceQuery {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CATALOG_JOB_TYPE, allEntries = true)
     public JobTypeResponse archiveJobType(UUID id, long version) {
         JobType entity = requireJobTypeEntity(id);
         checkVersion("JobType", id, version, entity.getVersion());
@@ -117,6 +133,7 @@ class CatalogServiceImpl implements CatalogService, CatalogReferenceQuery {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CATALOG_CHECKLIST_TEMPLATE, allEntries = true)
     public ChecklistTemplateResponse createChecklistTemplate(ChecklistTemplateCommand command) {
         UUID tenant = tenant();
         if (command.equipmentTypeId() != null) {
@@ -134,6 +151,7 @@ class CatalogServiceImpl implements CatalogService, CatalogReferenceQuery {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CATALOG_CHECKLIST_TEMPLATE, allEntries = true)
     public ChecklistTemplateResponse publishChecklistTemplate(UUID id, long version) {
         ChecklistTemplate entity = requireChecklistTemplateEntity(id);
         checkVersion("ChecklistTemplate", id, version, entity.getVersion());
@@ -147,6 +165,7 @@ class CatalogServiceImpl implements CatalogService, CatalogReferenceQuery {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CATALOG_CHECKLIST_TEMPLATE, key = "@tenantContext.requireBusinessId().toString() + ':' + #id")
     public ChecklistTemplateResponse getChecklistTemplate(UUID id) {
         return mapper.toResponse(requireChecklistTemplateEntity(id));
     }
@@ -154,11 +173,13 @@ class CatalogServiceImpl implements CatalogService, CatalogReferenceQuery {
     @Override
     @Transactional(readOnly = true)
     public Page<ChecklistTemplateResponse> listChecklistTemplates(Pageable pageable) {
-        return checklistTemplateRepository.findAllByBusinessId(tenant(), pageable).map(mapper::toResponse);
+        Pageable bounded = pageablePolicy.normalize(pageable, Sort.by(Sort.Direction.DESC, "updatedAt"), "code", "name", "templateVersion", "status", "publishedAt", "createdAt", "updatedAt");
+        return checklistTemplateRepository.findAllByBusinessId(tenant(), bounded).map(mapper::toResponse);
     }
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CATALOG_MAINTENANCE_TEMPLATE, allEntries = true)
     public MaintenanceTemplateResponse createMaintenanceTemplate(MaintenanceTemplateCommand command) {
         UUID tenant = tenant();
         requireActive(requireEquipmentTypeEntity(command.equipmentTypeId()).getStatus(), "EquipmentType");
@@ -184,6 +205,7 @@ class CatalogServiceImpl implements CatalogService, CatalogReferenceQuery {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CATALOG_MAINTENANCE_TEMPLATE, key = "@tenantContext.requireBusinessId().toString() + ':' + #id")
     public MaintenanceTemplateResponse getMaintenanceTemplate(UUID id) {
         return mapper.toResponse(requireMaintenanceTemplateEntity(id));
     }
@@ -191,11 +213,13 @@ class CatalogServiceImpl implements CatalogService, CatalogReferenceQuery {
     @Override
     @Transactional(readOnly = true)
     public Page<MaintenanceTemplateResponse> listMaintenanceTemplates(Pageable pageable) {
-        return maintenanceTemplateRepository.findAllByBusinessId(tenant(), pageable).map(mapper::toResponse);
+        Pageable bounded = pageablePolicy.normalize(pageable, Sort.by("code").ascending(), "code", "name", "templateVersion", "status", "createdAt", "updatedAt");
+        return maintenanceTemplateRepository.findAllByBusinessId(tenant(), bounded).map(mapper::toResponse);
     }
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CATALOG_MAINTENANCE_TEMPLATE, allEntries = true)
     public MaintenanceTemplateResponse archiveMaintenanceTemplate(UUID id, long version) {
         MaintenanceTemplate entity = requireMaintenanceTemplateEntity(id);
         checkVersion("MaintenanceTemplate", id, version, entity.getVersion());
@@ -205,6 +229,7 @@ class CatalogServiceImpl implements CatalogService, CatalogReferenceQuery {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CATALOG_UNIT, allEntries = true)
     public UnitOfMeasureResponse createUnitOfMeasure(UnitOfMeasureCommand command) {
         UUID tenant = tenant();
         rejectDuplicate(unitRepository.existsByBusinessIdAndCodeIgnoreCase(tenant, command.code()), "Unit code");
@@ -215,6 +240,7 @@ class CatalogServiceImpl implements CatalogService, CatalogReferenceQuery {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CATALOG_UNIT, key = "@tenantContext.requireBusinessId().toString() + ':' + #id")
     public UnitOfMeasureResponse getUnitOfMeasure(UUID id) {
         return mapper.toResponse(requireUnitEntity(id));
     }
@@ -222,11 +248,13 @@ class CatalogServiceImpl implements CatalogService, CatalogReferenceQuery {
     @Override
     @Transactional(readOnly = true)
     public Page<UnitOfMeasureResponse> listUnitsOfMeasure(Pageable pageable) {
-        return unitRepository.findAllByBusinessId(tenant(), pageable).map(mapper::toResponse);
+        Pageable bounded = pageablePolicy.normalize(pageable, Sort.by("code").ascending(), "code", "symbol", "name", "quantityType", "active", "createdAt", "updatedAt");
+        return unitRepository.findAllByBusinessId(tenant(), bounded).map(mapper::toResponse);
     }
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CATALOG_UNIT, allEntries = true)
     public UnitOfMeasureResponse updateUnitOfMeasure(UUID id, UnitOfMeasureCommand command) {
         UnitOfMeasure entity = requireUnitEntity(id);
         checkVersion("UnitOfMeasure", id, command.version(), entity.getVersion());
@@ -239,6 +267,7 @@ class CatalogServiceImpl implements CatalogService, CatalogReferenceQuery {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CATALOG_UNIT, allEntries = true)
     public UnitOfMeasureResponse deactivateUnitOfMeasure(UUID id, long version) {
         UnitOfMeasure entity = requireUnitEntity(id);
         checkVersion("UnitOfMeasure", id, version, entity.getVersion());
@@ -248,6 +277,7 @@ class CatalogServiceImpl implements CatalogService, CatalogReferenceQuery {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CATALOG_EQUIPMENT_TYPE, key = "@tenantContext.requireBusinessId().toString() + ':' + #id + ':ref'")
     public EquipmentTypeReference requireEquipmentType(UUID id) {
         EquipmentType entity = requireEquipmentTypeEntity(id);
         return new EquipmentTypeReference(entity.getId(), entity.getCode(), entity.getName(), entity.getStatus());
@@ -255,6 +285,7 @@ class CatalogServiceImpl implements CatalogService, CatalogReferenceQuery {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CATALOG_JOB_TYPE, key = "@tenantContext.requireBusinessId().toString() + ':' + #id + ':ref'")
     public JobTypeReference requireJobType(UUID id) {
         JobType entity = requireJobTypeEntity(id);
         return new JobTypeReference(entity.getId(), entity.getCode(), entity.getName(), entity.getStatus());
@@ -262,6 +293,7 @@ class CatalogServiceImpl implements CatalogService, CatalogReferenceQuery {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CATALOG_CHECKLIST_TEMPLATE, key = "@tenantContext.requireBusinessId().toString() + ':' + #id + ':ref'")
     public ChecklistTemplateReference requireChecklistTemplate(UUID id) {
         ChecklistTemplate entity = requireChecklistTemplateEntity(id);
         return new ChecklistTemplateReference(entity.getId(), entity.getEquipmentTypeId(), entity.getJobTypeId(), entity.getTemplateVersion(), entity.getStatus());
@@ -269,6 +301,7 @@ class CatalogServiceImpl implements CatalogService, CatalogReferenceQuery {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CATALOG_MAINTENANCE_TEMPLATE, key = "@tenantContext.requireBusinessId().toString() + ':' + #id + ':ref'")
     public MaintenanceTemplateReference requireMaintenanceTemplate(UUID id) {
         MaintenanceTemplate entity = requireMaintenanceTemplateEntity(id);
         return new MaintenanceTemplateReference(entity.getId(), entity.getEquipmentTypeId(), entity.getJobTypeId(), entity.getChecklistTemplateId(), entity.getTemplateVersion(), entity.getStatus());
