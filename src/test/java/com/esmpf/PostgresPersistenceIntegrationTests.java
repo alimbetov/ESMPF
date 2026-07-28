@@ -38,7 +38,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 })
 class PostgresPersistenceIntegrationTests {
 
-    private static final int EXPECTED_DOMAIN_TABLE_COUNT = 54;
+    private static final int EXPECTED_DOMAIN_TABLE_COUNT = 55;
 
     @Container
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine")
@@ -71,6 +71,7 @@ class PostgresPersistenceIntegrationTests {
         assertEquals(1, countTable("role_permission"));
         assertEquals(1, countTable("user_role_assignment"));
         assertEquals(1, countTable("stored_file"));
+        assertEquals(1, countTable("business_international_profile"));
 
         SpringLiquibase liquibase = new SpringLiquibase();
         liquibase.setDataSource(dataSource);
@@ -84,6 +85,7 @@ class PostgresPersistenceIntegrationTests {
         assertEquals(1, countTable("role_permission"));
         assertEquals(1, countTable("user_role_assignment"));
         assertEquals(1, countTable("stored_file"));
+        assertEquals(1, countTable("business_international_profile"));
     }
 
     @Test
