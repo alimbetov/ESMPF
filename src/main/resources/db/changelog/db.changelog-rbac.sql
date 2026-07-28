@@ -45,6 +45,9 @@ CREATE TABLE role_permission (
 CREATE INDEX idx_role_permission_role ON role_permission(role_id);
 CREATE INDEX idx_role_permission_code ON role_permission(permission_code);
 
+ALTER TABLE user_account
+    ADD CONSTRAINT uk_user_account_business_id_id UNIQUE (business_id, id);
+
 CREATE TABLE user_role_assignment (
     id UUID PRIMARY KEY,
     business_id UUID NOT NULL,
@@ -134,4 +137,4 @@ JOIN access_role r ON r.business_id=u.business_id
  AND r.code=CASE upper(u.role) WHEN 'USER' THEN 'VIEWER' ELSE upper(u.role) END
 ON CONFLICT DO NOTHING;
 
---rollback DROP INDEX IF EXISTS uk_user_account_external_identity; DROP TABLE user_role_assignment; DROP TABLE role_permission; DROP TABLE permission;
+--rollback DROP INDEX IF EXISTS uk_user_account_external_identity; DROP TABLE user_role_assignment; ALTER TABLE user_account DROP CONSTRAINT IF EXISTS uk_user_account_business_id_id; DROP TABLE role_permission; DROP TABLE permission;
