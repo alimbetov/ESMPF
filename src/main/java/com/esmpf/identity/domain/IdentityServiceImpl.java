@@ -78,7 +78,7 @@ class IdentityServiceImpl implements IdentityService, IdentityReferenceQuery {
 
     @Override @Transactional
     public UserAccountResponse createUser(UserAccountCreateCommand command) {
-        validateUserIdentity(null, command.email(), command.externalProvider(), command.externalSubject());
+        validateUserEmail(null, command.email());
         UserAccount entity = mapper.toEntity(command); entity.setBusinessId(tenant());
         return mapper.toResponse(userRepository.saveAndFlush(entity));
     }
@@ -94,7 +94,7 @@ class IdentityServiceImpl implements IdentityService, IdentityReferenceQuery {
     @Override @Transactional
     public UserAccountResponse updateUser(UUID userId, UserAccountUpdateCommand command) {
         UserAccount entity = requireUserEntity(userId); checkVersion("UserAccount", userId, command.version(), entity.getVersion());
-        validateUserIdentity(userId, command.email(), command.externalProvider(), command.externalSubject());
+        validateUserEmail(userId, command.email());
         mapper.update(command, entity); return mapper.toResponse(userRepository.saveAndFlush(entity));
     }
 
@@ -131,7 +131,7 @@ class IdentityServiceImpl implements IdentityService, IdentityReferenceQuery {
 
     @Override @Transactional(readOnly = true)
     public UserReference requireUser(UUID userId) {
-        UserAccount user = requireUserEntity(userId); return new UserReference(user.getId(), Boolean.TRUE.equals(user.getActive()), Boolean.TRUE.equals(user.getWorker()), user.getRole());
+        UserAccount user = requireUserEntity(userId); return new UserReference(user.getId(), Boolean.TRUE.equals(user.getActive()), Boolean.TRUE.equals(user.getWorker()));
     }
 
     private BusinessResponse transitionBusiness(long version, String status) {
@@ -147,10 +147,8 @@ class IdentityServiceImpl implements IdentityService, IdentityReferenceQuery {
     private UserAccount requireUserEntity(UUID id) { return userRepository.findByIdAndBusinessId(id, tenant()).orElseThrow(() -> new EntityNotFoundException("UserAccount", id)); }
     private WorkerQualification requireQualification(UUID id) { return qualificationRepository.findByIdAndBusinessId(id, tenant()).orElseThrow(() -> new EntityNotFoundException("WorkerQualification", id)); }
     private UUID tenant() { return tenantContext.requireBusinessId(); }
-    private void validateUserIdentity(UUID id, String email, String provider, String subject) {
+    private void validateUserEmail(UUID id, String email) {
         if (email != null && (id == null ? userRepository.existsByBusinessIdAndEmailIgnoreCase(tenant(), email) : userRepository.existsByBusinessIdAndEmailIgnoreCaseAndIdNot(tenant(), email, id))) throw new IllegalArgumentException("Email already exists in tenant");
-        if ((provider == null) != (subject == null)) throw new IllegalArgumentException("externalProvider and externalSubject must be supplied together");
-        if (id == null && provider != null && userRepository.existsByBusinessIdAndExternalProviderAndExternalSubject(tenant(), provider, subject)) throw new IllegalArgumentException("External identity already exists");
     }
     private static void validateCoordinates(Double latitude, Double longitude) {
         if ((latitude == null) != (longitude == null)) throw new IllegalArgumentException("Latitude and longitude must be supplied together");
