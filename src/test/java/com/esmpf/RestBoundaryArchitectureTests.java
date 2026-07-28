@@ -3,7 +3,9 @@ package com.esmpf;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.esmpf.commercial.CommercialRestController;
-import com.esmpf.web.InternalWorkerRestController;
+import com.esmpf.communication.CommunicationInternalRestController;
+import com.esmpf.document.DocumentInternalRestController;
+import com.esmpf.platform.PlatformInternalRestController;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Set;
@@ -28,9 +30,15 @@ class RestBoundaryArchitectureTests {
     }
 
     @Test
-    void workerControllerIsPublishedOnlyUnderInternalNamespace() {
-        RequestMapping mapping = InternalWorkerRestController.class.getAnnotation(RequestMapping.class);
+    void workerControllersArePublishedOnlyUnderInternalNamespace() {
+        assertInternal(PlatformInternalRestController.class, "/internal/v1/platform");
+        assertInternal(CommunicationInternalRestController.class, "/internal/v1/notifications");
+        assertInternal(DocumentInternalRestController.class, "/internal/v1/generated-documents");
+    }
+
+    private static void assertInternal(Class<?> controller, String expected) {
+        RequestMapping mapping = controller.getAnnotation(RequestMapping.class);
         assertNotNull(mapping);
-        assertArrayEquals(new String[]{"/internal/v1"}, mapping.value());
+        assertArrayEquals(new String[]{expected}, mapping.value());
     }
 }
