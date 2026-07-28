@@ -1,5 +1,6 @@
 package com.esmpf.web;
 
+import com.esmpf.shared.security.EsmpfPrincipal;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -65,6 +66,10 @@ final class ApiPermissionFilter extends OncePerRequestFilter {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || authentication instanceof AnonymousAuthenticationToken || !authentication.isAuthenticated()) {
             chain.doFilter(request, response);
+            return;
+        }
+        if (!(authentication.getPrincipal() instanceof EsmpfPrincipal)) {
+            deniedHandler.handle(request, response, new org.springframework.security.access.AccessDeniedException("Untrusted API principal"));
             return;
         }
         Rule matched = rules.stream().filter(r -> r.matcher.matches(request)).findFirst().orElse(null);
