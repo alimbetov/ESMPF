@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Set;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.AuthenticationEntryPoint;
@@ -61,13 +62,17 @@ final class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
             var validated = jwtUtility.validateAccessToken(authorization.substring(BEARER.length()));
             EffectiveAccess access = accessControlQuery.resolveEffectiveAccess(validated.userId());
             Set<String> roleCodes = access.roleCodes();
-            Set<String> permissions = access.permissions().stream().map(Enum::name).collect(java.util.stream.Collectors.toUnmodifiableSet());
-            EsmpfPrincipal principal = new EsmpfPrincipal(access.userId(), access.businessId(), roleCodes, permissions);
+            Set<String> permissions = access.permissions().stream()
+                    .map(Enum::name)
+                    .collect(java.util.stream.Collectors.toUnmodifiableSet());
+            EsmpfPrincipal principal = new EsmpfPrincipal(
+                    access.userId(), access.businessId(), roleCodes, permissions);
             List<SimpleGrantedAuthority> authorities = java.util.stream.Stream.concat(
                             permissions.stream().map(SimpleGrantedAuthority::new),
                             roleCodes.stream().map(role -> new SimpleGrantedAuthority("ROLE_" + role)))
                     .toList();
-            var authentication = UsernamePasswordAuthenticationToken.authenticated(principal, null, authorities);
+            var authentication = UsernamePasswordAuthenticationToken.authenticated(
+                    principal, null, authorities);
             SecurityContextHolder.getContext().setAuthentication(authentication);
             filterChain.doFilter(request, response);
         } catch (RuntimeException exception) {
@@ -82,8 +87,11 @@ final class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
         return path.startsWith("/api/v1/public/") || "/api/v1/auth/google".equals(path);
     }
 
-    private void reject(HttpServletRequest request, HttpServletResponse response, RuntimeException exception)
-            throws IOException, ServletException {
+    private void reject(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            AuthenticationException exception
+    ) throws IOException, ServletException {
         authenticationEntryPoint.commence(request, response, exception);
     }
 }
