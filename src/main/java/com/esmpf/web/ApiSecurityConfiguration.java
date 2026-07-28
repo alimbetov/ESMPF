@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.net.URI;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -16,6 +17,8 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 public class ApiSecurityConfiguration {
@@ -24,13 +27,13 @@ public class ApiSecurityConfiguration {
     SecurityFilterChain apiSecurityFilterChain(
             HttpSecurity http,
             AuthenticationEntryPoint authenticationEntryPoint,
-            AccessDeniedHandler accessDeniedHandler
+            AccessDeniedHandler accessDeniedHandler,
+            ObjectProvider<BearerTokenAuthenticationFilter> bearerFilterProvider,
+            ApiPermissionFilter apiPermissionFilter
     ) throws Exception {
-        return http
-                .csrf(csrf -> csrf.disable())
+        http.csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .formLogin(form -> form.disable())
                 .httpBasic(basic -> basic.disable())
                 .logout(logout -> logout.disable())
@@ -46,49 +49,45 @@ public class ApiSecurityConfiguration {
                                 "/api/v1/platform/idempotency-records/**",
                                 "/internal/**")
                         .denyAll()
-                        .anyRequest().authenticated())
-                .build();
+                        .anyRequest().authenticated());
+
+        BearerTokenAuthenticationFilter bearerFilter = bearerFilterProvider.getIfAvailable();
+        if (bearerFilter != null) {
+            http.addFilterBefore(bearerFilter, UsernamePasswordAuthenticationFilter.class);
+        }
+        http.addFilterAfter(apiPermissionFilter, AnonymousAuthenticationFilter.class);
+        return http.build();
+    }
+
+    @Bean
+    ApiPermissionFilter apiPermissionFilter(AccessDeniedHandler accessDeniedHandler) {
+        return new ApiPermissionFilter(accessDeniedHandler);
     }
 
     @Bean
     AuthenticationEntryPoint problemAuthenticationEntryPoint(ObjectMapper objectMapper) {
         return (request, response, exception) -> writeProblem(
-                objectMapper,
-                response,
-                HttpStatus.UNAUTHORIZED,
-                "Authentication required",
-                "A valid access token is required",
-                "authentication-required",
-                request.getRequestURI());
+                objectMapper, response, HttpStatus.UNAUTHORIZED,
+                "Authentication required", "A valid access token is required",
+                "authentication-required", request.getRequestURI());
     }
 
     @Bean
     AccessDeniedHandler problemAccessDeniedHandler(ObjectMapper objectMapper) {
         return (request, response, exception) -> writeProblem(
-                objectMapper,
-                response,
-                HttpStatus.FORBIDDEN,
-                "Access denied",
-                "The authenticated user is not allowed to perform this operation",
-                "access-denied",
-                request.getRequestURI());
+                objectMapper, response, HttpStatus.FORBIDDEN,
+                "Access denied", "The authenticated user is not allowed to perform this operation",
+                "access-denied", request.getRequestURI());
     }
 
-    private static void writeProblem(
-            ObjectMapper objectMapper,
-            HttpServletResponse response,
-            HttpStatus status,
-            String title,
-            String detail,
-            String code,
-            String path
-    ) throws IOException {
+    private static void writeProblem(ObjectMapper objectMapper, HttpServletResponse response,
+                                     HttpStatus status, String title, String detail, String code, String path)
+            throws IOException {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);
         problem.setTitle(title);
         problem.setType(URI.create("https://esmpf.dev/problems/" + code));
         problem.setProperty("code", code.toUpperCase().replace('-', '_'));
         problem.setProperty("path", path);
-
         response.setStatus(status.value());
         response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
         objectMapper.writeValue(response.getOutputStream(), problem);
