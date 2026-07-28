@@ -1,107 +1,90 @@
 # CRUD, contract and repository remediation
 
-This document tracks the code-grounded remediation sequence before RBAC, JWT bearer runtime and binary file storage.
+This document tracks the first remediation stage before RBAC, JWT bearer runtime and binary file storage.
 
 ## Traceability rule
 
-Every externally addressable aggregate must be reviewed across:
+Every externally addressable aggregate is reviewed across:
 
 ```text
 Entity
   -> tenant-scoped repository capability
   -> public application-service contract
-  -> implementation and transaction/lifecycle rules
-  -> REST route, request binding and response status
+  -> implementation and lifecycle rules
+  -> REST route and request binding
   -> positive and negative tests
 ```
 
-A missing generic `delete` method is not automatically a defect. Aggregate lifecycle, auditability, append-only records and legal retention may require archive, revoke, cancel, expire or no mutation at all. Every intentional omission must be documented.
+A missing generic delete is not automatically a defect. Archive, revoke, cancel, expire, immutable or append-only behaviour is documented explicitly.
 
-## Confirmed defects
+## Completed in PR #16
 
 ### Identity
 
-- Ordinary User DTOs exposed `passwordHash`, `role`, `externalProvider` and `externalSubject`.
-- Ordinary user update could change authorization and authentication binding.
-- User response leaked external identity data.
-- The current single `role` field conflicts with the planned many-role RBAC model.
-- Worker qualification lacks a direct `getQualification` method despite ID-addressed update/expire operations.
-- Business location has deactivate but no explicit reactivation operation.
+- removed `passwordHash`, `role`, `externalProvider` and `externalSubject` from ordinary User DTOs;
+- prevented MapStruct create/update paths from changing privileged fields;
+- added BusinessLocation activation/deactivation symmetry;
+- added WorkerQualification point read;
+- added negative repeated-transition proofs.
 
-### Documents and files
+### Documents
 
-- Attachment registration accepts client-controlled `storageKey`, size, checksum and content type.
-- No multipart upload, binary download, storage port or local/object-storage adapter exists.
-- Attachment and attachment-link direct reads are absent despite ID-addressed lifecycle records.
-- Attachment link has no unlink/archive policy.
-- Document signature is append-only by design, but this must be explicit in API documentation.
+- added ReportTemplate point read;
+- added Attachment metadata point read and tenant-scoped list;
+- added AttachmentLink point read and tenant-scoped unlink;
+- added DocumentSignature point read;
+- moved document-generation start/complete/fail transitions to `/internal/v1/**`;
+- retained metadata-only attachment registration as a transitional boundary until the file-storage PR.
 
-### Platform
+### Service support and platform
 
-- Outbox, audit and idempotency lifecycle methods are application/internal capabilities and must not be ordinary REST CRUD.
-- Public-token consume by internal UUID is not the eventual public token-resolution contract.
-- DataJob and IntegrationConnection lack direct read methods.
-- AuditLog is append-only and intentionally has no update/delete.
-- DocumentSequence is internal allocation state, not an external entity CRUD API.
+- added Material point read;
+- added ServiceAgreement point read;
+- added WarrantyCase point read;
+- added MobileDevice point read;
+- added IntegrationConnection point read;
+- moved outbox lifecycle, audit append, idempotency lifecycle, data-job execution, integration health callbacks and notification-delivery transitions to `/internal/v1/**`.
 
-### Commercial boundary
+### Commercial scope
 
-- A previous readiness decision deferred invoice/payment API publication, but REST controllers later exposed all CommercialService methods.
-- Commercial routes must be disabled or removed until product scope, permissions, reconciliation and payment-provider semantics are approved.
+- removed Invoice and Payment methods from `CommercialRestController`;
+- retained Estimate REST as the only current commercial MVP surface;
+- kept Invoice and Payment application services dormant for a later product decision.
 
-### Controller and repository verification
+### Verification
 
-- Existing controller coverage checks Java method-name parity only; it does not prove route, verb, body binding, status or delegation correctness.
-- Tenant-owned services must use business-scoped repository methods for reads and lists.
-- Parent/subject ownership must be checked, not merely entity existence.
+- controller coverage now supports external plus internal controllers and explicit dormant commercial methods;
+- REST boundary architecture tests prevent accidental Invoice/Payment publication;
+- tenant repository scope architecture test rejects unscoped service-layer repository operations;
+- CI is split into fast H2 tests and PostgreSQL/Testcontainers verification.
 
-## Current remediation slice
+## Explicitly deferred
 
-- Removed credentials, role and external identity from ordinary public User DTOs.
-- Prevented MapStruct create/update paths from writing privileged identity fields.
-- Reduced `UserReference` to non-authorization identity facts.
-- Added an architecture test preventing reintroduction of forbidden fields.
+- RBAC permissions, role-permission and user-role assignment;
+- JWT bearer HTTP runtime;
+- object-level authorization;
+- multipart upload and binary download;
+- Local `StoragePort` adapter;
+- MinIO/S3 and quarantine scanning.
 
-## Planned sequence
+## Merge criteria
 
-### CRUD remediation PR
+```text
+[ ] fast H2 job green
+[ ] PostgreSQL/Testcontainers job green
+[ ] controller coverage test green
+[ ] REST boundary test green
+[ ] tenant repository scope test green
+[ ] negative lifecycle tests green
+[ ] no Invoice or Payment REST methods
+[ ] all worker mutation routes under /internal/v1/**
+```
 
-- complete entity capability matrix;
-- add justified missing reads/reactivation/unlink operations;
-- internalize infrastructure APIs;
-- reconcile commercial REST exposure;
-- strengthen route/repository architecture tests.
+## Follow-up sequence
 
-### PR #15 — RBAC model + API permission matrix
-
-- roles;
-- permissions;
-- role_permission;
-- user_role;
-- business scope;
-- `@PreAuthorize` / `AuthorizationManager`;
-- dedicated role-assignment use cases.
-
-### PR #16 — JWT bearer runtime
-
-- JWT validation;
-- user resolution and active check;
-- AuthenticatedActor;
-- business isolation;
-- 401/403 proofs.
-
-### PR #17 — File storage foundation
-
-- multipart upload;
-- StoragePort;
-- local adapter;
-- server-side SHA-256;
-- size/type policies;
-- upload/download endpoints and authorization.
-
-### PR #18 — MinIO/S3 adapter + quarantine lifecycle
-
-- private object storage;
-- quarantine/scanning states;
-- controlled download/presigned access;
-- cleanup and reconciliation.
+```text
+PR #17  RBAC model + API permission matrix
+PR #18  JWT bearer runtime + tenant/object scope
+PR #19  Local file storage + upload/download
+PR #20  MinIO/S3 + quarantine lifecycle
+```
