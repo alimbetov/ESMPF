@@ -24,7 +24,9 @@ public class IdentityRestController {
     }
 
     @GetMapping("/business")
-    public BusinessResponse getCurrentBusiness() { return service.getCurrentBusiness(); }
+    public BusinessResponse getCurrentBusiness() {
+        return service.getCurrentBusiness();
+    }
 
     @PutMapping("/business")
     public BusinessResponse updateCurrentBusiness(@Valid @RequestBody BusinessUpdateCommand command) {
@@ -58,14 +60,26 @@ public class IdentityRestController {
     }
 
     @PutMapping("/business/locations/{locationId}")
-    public BusinessLocationResponse updateLocation(@PathVariable UUID locationId,
-                                                     @Valid @RequestBody BusinessLocationCommand command) {
+    public BusinessLocationResponse updateLocation(
+            @PathVariable UUID locationId,
+            @Valid @RequestBody BusinessLocationCommand command
+    ) {
         return service.updateLocation(locationId, command);
     }
 
+    @PostMapping("/business/locations/{locationId}/actions/activate")
+    public BusinessLocationResponse activateLocation(
+            @PathVariable UUID locationId,
+            @Valid @RequestBody VersionRequest request
+    ) {
+        return service.activateLocation(locationId, request.version());
+    }
+
     @PostMapping("/business/locations/{locationId}/actions/deactivate")
-    public BusinessLocationResponse deactivateLocation(@PathVariable UUID locationId,
-                                                         @Valid @RequestBody VersionRequest request) {
+    public BusinessLocationResponse deactivateLocation(
+            @PathVariable UUID locationId,
+            @Valid @RequestBody VersionRequest request
+    ) {
         return service.deactivateLocation(locationId, request.version());
     }
 
@@ -76,53 +90,77 @@ public class IdentityRestController {
     }
 
     @GetMapping("/users/{userId}")
-    public UserAccountResponse getUser(@PathVariable UUID userId) { return service.getUser(userId); }
+    public UserAccountResponse getUser(@PathVariable UUID userId) {
+        return service.getUser(userId);
+    }
 
     @GetMapping("/users")
-    public Page<UserAccountResponse> listUsers(Pageable pageable) { return service.listUsers(pageable); }
+    public Page<UserAccountResponse> listUsers(Pageable pageable) {
+        return service.listUsers(pageable);
+    }
 
     @PutMapping("/users/{userId}")
-    public UserAccountResponse updateUser(@PathVariable UUID userId,
-                                           @Valid @RequestBody UserAccountUpdateCommand command) {
+    public UserAccountResponse updateUser(
+            @PathVariable UUID userId,
+            @Valid @RequestBody UserAccountUpdateCommand command
+    ) {
         return service.updateUser(userId, command);
     }
 
     @PostMapping("/users/{userId}/actions/activate")
-    public UserAccountResponse activateUser(@PathVariable UUID userId,
-                                             @Valid @RequestBody VersionRequest request) {
+    public UserAccountResponse activateUser(
+            @PathVariable UUID userId,
+            @Valid @RequestBody VersionRequest request
+    ) {
         return service.activateUser(userId, request.version());
     }
 
     @PostMapping("/users/{userId}/actions/deactivate")
-    public UserAccountResponse deactivateUser(@PathVariable UUID userId,
-                                               @Valid @RequestBody VersionRequest request) {
+    public UserAccountResponse deactivateUser(
+            @PathVariable UUID userId,
+            @Valid @RequestBody VersionRequest request
+    ) {
         return service.deactivateUser(userId, request.version());
     }
 
     @PostMapping("/users/{userId}/qualifications")
     @ResponseStatus(HttpStatus.CREATED)
-    public WorkerQualificationResponse createQualification(@PathVariable UUID userId,
-            @Valid @RequestBody WorkerQualificationCommand command) {
+    public WorkerQualificationResponse createQualification(
+            @PathVariable UUID userId,
+            @Valid @RequestBody WorkerQualificationCommand command
+    ) {
         if (!userId.equals(command.userId())) {
             throw new IllegalArgumentException("path userId must match command userId");
         }
         return service.createQualification(command);
     }
 
+    @GetMapping("/qualifications/{qualificationId}")
+    public WorkerQualificationResponse getQualification(@PathVariable UUID qualificationId) {
+        return service.getQualification(qualificationId);
+    }
+
     @GetMapping("/users/{userId}/qualifications")
-    public Page<WorkerQualificationResponse> listQualifications(@PathVariable UUID userId, Pageable pageable) {
+    public Page<WorkerQualificationResponse> listQualifications(
+            @PathVariable UUID userId,
+            Pageable pageable
+    ) {
         return service.listQualifications(userId, pageable);
     }
 
     @PutMapping("/qualifications/{qualificationId}")
-    public WorkerQualificationResponse updateQualification(@PathVariable UUID qualificationId,
-            @Valid @RequestBody WorkerQualificationCommand command) {
+    public WorkerQualificationResponse updateQualification(
+            @PathVariable UUID qualificationId,
+            @Valid @RequestBody WorkerQualificationCommand command
+    ) {
         return service.updateQualification(qualificationId, command);
     }
 
     @PostMapping("/qualifications/{qualificationId}/actions/expire")
-    public WorkerQualificationResponse expireQualification(@PathVariable UUID qualificationId,
-            @Valid @RequestBody VersionRequest request) {
+    public WorkerQualificationResponse expireQualification(
+            @PathVariable UUID qualificationId,
+            @Valid @RequestBody VersionRequest request
+    ) {
         return service.expireQualification(qualificationId, request.version());
     }
 }
