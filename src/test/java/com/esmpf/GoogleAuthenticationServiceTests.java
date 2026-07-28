@@ -97,6 +97,18 @@ class GoogleAuthenticationServiceTests {
                 gateway).signInWithGoogle(new GoogleSignInCommand("credential")));
     }
 
+    @Test
+    void rejectsOverwritingAnotherExternalProvider() {
+        InMemoryGateway gateway = new InMemoryGateway();
+        gateway.add(new AuthenticationUser(
+                UUID.randomUUID(), "user@example.com", "User", true, "MICROSOFT", "ms-sub"));
+
+        assertThrows(SecurityAccessException.class, () -> service(
+                new GooglePrincipal("google-sub", "user@example.com", true, null, null),
+                gateway).signInWithGoogle(new GoogleSignInCommand("credential")));
+        assertEquals(0, gateway.linkCalls);
+    }
+
     private static DefaultAuthenticationService service(
             GooglePrincipal principal,
             InMemoryGateway gateway
@@ -140,9 +152,12 @@ class GoogleAuthenticationServiceTests {
         }
 
         @Override
-        public AuthenticationUser linkGoogleIdentity(UUID userId, String googleSubject) {
+        public AuthenticationUser linkGoogleIdentityIfAbsent(UUID userId, String googleSubject) {
             linkCalls++;
             AuthenticationUser current = users.get(userId);
+            if (current.hasExternalIdentity() && !current.isGoogleIdentity(googleSubject)) {
+                throw new IllegalStateException("external identity already linked");
+            }
             AuthenticationUser linked = new AuthenticationUser(
                     current.id(), current.email(), current.fullName(), current.active(),
                     "GOOGLE", googleSubject);
