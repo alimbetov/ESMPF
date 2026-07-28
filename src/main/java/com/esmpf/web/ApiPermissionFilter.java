@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
 import java.util.Set;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -62,8 +63,12 @@ final class ApiPermissionFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         if (!request.getRequestURI().startsWith("/api/v1/") || isPublic(request)) { chain.doFilter(request, response); return; }
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication instanceof AnonymousAuthenticationToken || !authentication.isAuthenticated()) {
+            chain.doFilter(request, response);
+            return;
+        }
         Rule matched = rules.stream().filter(r -> r.matcher.matches(request)).findFirst().orElse(null);
-        if (matched == null || authentication == null || !authentication.isAuthenticated() || !hasAny(authentication, matched.permissions)) {
+        if (matched == null || !hasAny(authentication, matched.permissions)) {
             deniedHandler.handle(request, response, new org.springframework.security.access.AccessDeniedException("Missing API permission"));
             return;
         }
