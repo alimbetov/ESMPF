@@ -35,23 +35,12 @@ import org.springframework.test.web.servlet.MockMvc;
 @Import({ApiSecurityConfiguration.class, ApiExceptionHandler.class})
 class ApiSecurityConfigurationTests {
 
-    @Autowired
-    private MockMvc mockMvc;
-
-    @MockitoBean
-    private JpaMetamodelMappingContext jpaMetamodelMappingContext;
-
-    @MockitoBean
-    private CustomerService customerService;
-
-    @MockitoBean
-    private CustomerInteractionService customerInteractionService;
-
-    @MockitoBean
-    private ContentService contentService;
-
-    @MockitoBean
-    private PlatformService platformService;
+    @Autowired private MockMvc mockMvc;
+    @MockitoBean private JpaMetamodelMappingContext jpaMetamodelMappingContext;
+    @MockitoBean private CustomerService customerService;
+    @MockitoBean private CustomerInteractionService customerInteractionService;
+    @MockitoBean private ContentService contentService;
+    @MockitoBean private PlatformService platformService;
 
     @Test
     void protectedApiRequiresAuthentication() throws Exception {
@@ -59,36 +48,37 @@ class ApiSecurityConfigurationTests {
                 .andExpect(status().isUnauthorized())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.code").value("AUTHENTICATION_REQUIRED"));
-
         verifyNoInteractions(customerService);
     }
 
     @Test
-    void authenticatedUserCanReachProtectedControllerBeforePermissionMatrix() throws Exception {
-        given(customerService.listCustomers(any(Pageable.class))).willReturn(Page.empty());
-
+    void authenticatedUserWithoutPermissionIsForbidden() throws Exception {
         mockMvc.perform(get("/api/v1/customers").with(user("user")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+        verifyNoInteractions(customerService);
+    }
+
+    @Test
+    void matchingPermissionCanReachProtectedController() throws Exception {
+        given(customerService.listCustomers(any(Pageable.class))).willReturn(Page.empty());
+        mockMvc.perform(get("/api/v1/customers").with(user("user").authorities(() -> "CUSTOMER_READ")))
                 .andExpect(status().isOk());
     }
 
     @Test
     void publishedContentRemainsPublic() throws Exception {
-        given(contentService.listPublishedArticles(isNull(), any(Pageable.class)))
-                .willReturn(Page.empty());
-
-        mockMvc.perform(get("/api/v1/public/articles"))
-                .andExpect(status().isOk());
+        given(contentService.listPublishedArticles(isNull(), any(Pageable.class))).willReturn(Page.empty());
+        mockMvc.perform(get("/api/v1/public/articles")).andExpect(status().isOk());
     }
 
     @Test
     void infrastructureLifecycleEndpointsAreNeverExposedToUserAuthentication() throws Exception {
         mockMvc.perform(post("/api/v1/platform/outbox-events")
-                        .with(user("admin"))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
+                        .with(user("admin").authorities(() -> "AUDIT_READ"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
-
         verifyNoInteractions(platformService);
     }
 }
