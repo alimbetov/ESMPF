@@ -1,20 +1,23 @@
 package com.esmpf.service.domain;
 
-import com.esmpf.shared.security.EsmpfPrincipal;
+import com.esmpf.shared.security.SecurityExecutionContext;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public final class DeviceAccessPolicy {
 
+    private final SecurityExecutionContext executionContext;
+
     public void requireAccessToUser(UUID ownerUserId) {
-        var authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !(authentication.getPrincipal() instanceof EsmpfPrincipal principal)) {
-            // Direct in-process executions are trusted. Every user HTTP execution has EsmpfPrincipal.
+        if (executionContext.requireExecutionKind() == SecurityExecutionContext.ExecutionKind.SYSTEM) {
             return;
         }
+        var principal = executionContext.currentUserPrincipal()
+                .orElseThrow(() -> new AccessDeniedException("Authenticated ESMPF principal is required"));
         if (principal.userId().equals(ownerUserId)) {
             if (principal.hasPermission("DEVICE_SELF_MANAGE") || principal.hasPermission("DEVICE_ADMIN")) {
                 return;

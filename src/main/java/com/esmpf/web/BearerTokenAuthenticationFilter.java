@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Set;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -20,11 +21,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 final class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
 
-    private static final String BEARER = "Bearer ";
-
     private final JwtUtility jwtUtility;
     private final PersistedAccessResolver accessResolver;
     private final AuthenticationEntryPoint authenticationEntryPoint;
+    private final BearerTokenParser tokenParser = new BearerTokenParser();
 
     BearerTokenAuthenticationFilter(
             JwtUtility jwtUtility,
@@ -42,23 +42,26 @@ final class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
-        if (SecurityContextHolder.getContext().getAuthentication() != null) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        String authorization = request.getHeader("Authorization");
-        if (authorization == null || authorization.isBlank()) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-        if (!authorization.startsWith(BEARER) || authorization.length() == BEARER.length()) {
-            reject(request, response, new BadCredentialsException("Malformed bearer token"));
-            return;
-        }
-
         try {
-            var validated = jwtUtility.validateAccessToken(authorization.substring(BEARER.length()));
+            String token = tokenParser.parse(request);
+            Authentication existing = SecurityContextHolder.getContext().getAuthentication();
+
+            if (token == null) {
+                if (existing == null) {
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+                if (existing.isAuthenticated() && existing.getPrincipal() instanceof EsmpfPrincipal) {
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+                SecurityContextHolder.clearContext();
+                reject(request, response, new BadCredentialsException("Untrusted pre-authentication principal"));
+                return;
+            }
+
+            SecurityContextHolder.clearContext();
+            var validated = jwtUtility.validateAccessToken(token);
             var access = accessResolver.resolve(validated.userId());
             Set<String> roleCodes = access.roleCodes();
             Set<String> permissions = access.permissionCodes();
