@@ -2,34 +2,18 @@ package com.esmpf;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.esmpf.catalog.CatalogRestController;
-import com.esmpf.catalog.CatalogService;
-import com.esmpf.commercial.CommercialRestController;
-import com.esmpf.commercial.CommercialService;
-import com.esmpf.communication.CommunicationRestController;
-import com.esmpf.communication.CommunicationService;
-import com.esmpf.content.ContentRestController;
-import com.esmpf.content.ContentService;
-import com.esmpf.customer.CustomerInteractionService;
-import com.esmpf.customer.CustomerRestController;
-import com.esmpf.customer.CustomerService;
-import com.esmpf.document.DocumentRestController;
-import com.esmpf.document.DocumentService;
-import com.esmpf.equipment.EquipmentRestController;
-import com.esmpf.equipment.EquipmentService;
-import com.esmpf.identity.IdentityRestController;
-import com.esmpf.identity.IdentityService;
-import com.esmpf.identity.auth.AuthenticationRestController;
-import com.esmpf.identity.auth.AuthenticationService;
-import com.esmpf.maintenance.MaintenanceRestController;
-import com.esmpf.maintenance.MaintenanceService;
-import com.esmpf.platform.PlatformRestController;
-import com.esmpf.platform.PlatformService;
-import com.esmpf.service.ServiceManagementRestController;
-import com.esmpf.service.ServiceManagementService;
-import com.esmpf.service.ServiceSupportRestController;
-import com.esmpf.service.ServiceSupportService;
-import com.esmpf.web.InternalWorkerRestController;
+import com.esmpf.catalog.*;
+import com.esmpf.commercial.*;
+import com.esmpf.communication.*;
+import com.esmpf.content.*;
+import com.esmpf.customer.*;
+import com.esmpf.document.*;
+import com.esmpf.equipment.*;
+import com.esmpf.identity.*;
+import com.esmpf.identity.auth.*;
+import com.esmpf.maintenance.*;
+import com.esmpf.platform.*;
+import com.esmpf.service.*;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -49,9 +33,9 @@ class RestControllerCoverageArchitectureTests {
             Map.entry(ServiceManagementService.class, List.of(ServiceManagementRestController.class)),
             Map.entry(ServiceSupportService.class, List.of(ServiceSupportRestController.class)),
             Map.entry(CommercialService.class, List.of(CommercialRestController.class)),
-            Map.entry(DocumentService.class, List.of(DocumentRestController.class, InternalWorkerRestController.class)),
-            Map.entry(CommunicationService.class, List.of(CommunicationRestController.class, InternalWorkerRestController.class)),
-            Map.entry(PlatformService.class, List.of(PlatformRestController.class, InternalWorkerRestController.class)),
+            Map.entry(DocumentService.class, List.of(DocumentRestController.class, DocumentInternalRestController.class)),
+            Map.entry(CommunicationService.class, List.of(CommunicationRestController.class, CommunicationInternalRestController.class)),
+            Map.entry(PlatformService.class, List.of(PlatformRestController.class, PlatformInternalRestController.class)),
             Map.entry(ContentService.class, List.of(ContentRestController.class))
     );
 
