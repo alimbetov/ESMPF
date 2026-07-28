@@ -13,6 +13,11 @@ spring:
         format_sql: true
   liquibase:
     enabled: false
+  servlet:
+    multipart:
+      max-file-size: ${ESMPF_STORAGE_MAX_FILE_SIZE:100MB}
+      max-request-size: ${ESMPF_STORAGE_MAX_REQUEST_SIZE:101MB}
+      file-size-threshold: 0
   data:
     web:
       pageable:
@@ -30,6 +35,12 @@ esmpf:
       clock-skew: ${ESMPF_JWT_CLOCK_SKEW:PT30S}
     google:
       enabled: false
+  storage:
+    file:
+      max-size: ${ESMPF_STORAGE_MAX_BYTES:104857600}
+    local:
+      root: ${ESMPF_STORAGE_ROOT:./var/storage}
+      temp-directory: ${ESMPF_STORAGE_TEMP:./var/storage/.tmp}
 
 server:
   error:
