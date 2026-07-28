@@ -58,9 +58,13 @@ interface IdentityMapper {
     @Mapping(target = "active", constant = "true")
     UserAccount toEntity(UserAccountCreateCommand command);
 
-    @Mapping(target = "role", ignore = true)
-    @Mapping(target = "externalProvider", ignore = true)
-    @Mapping(target = "externalSubject", ignore = true)
+    @BeanMapping(ignoreUnmappedSourceProperties = {
+            "businessId",
+            "passwordHash",
+            "role",
+            "externalProvider",
+            "externalSubject"
+    })
     UserAccountResponse toResponse(UserAccount entity);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
