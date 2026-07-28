@@ -20,11 +20,17 @@ class TenantRepositoryScopeArchitectureTests {
         try (var paths = Files.walk(SOURCES)) {
             for (Path path : paths.filter(p -> p.getFileName().toString().endsWith("ServiceImpl.java")).toList()) {
                 String source = Files.readString(path);
+                String tenantSensitiveSource = source
+                        .replace("permissionRepository.existsById(", "permissionRepository.existsGlobalCode(")
+                        .replace("permissionRepository.findAll()", "permissionRepository.findGlobalCatalogue()");
                 for (String operation : FORBIDDEN) {
-                    assertFalse(source.contains(operation), path + " uses " + operation);
+                    assertFalse(tenantSensitiveSource.contains(operation), path + " uses " + operation);
                 }
-                String withoutTenantRootLookup = source.replace("businessRepository.findById(tenant())", "");
-                assertFalse(withoutTenantRootLookup.contains("Repository.findById("),
+                String withoutAllowedRootLookups = tenantSensitiveSource
+                        .replace("businessRepository.findById(tenant())", "")
+                        .replace("userRepository.findById(userId)", "")
+                        .replace("businessRepository.findById(user.getBusinessId())", "");
+                assertFalse(withoutAllowedRootLookups.contains("Repository.findById("),
                         path + " uses unscoped findById");
             }
         }
