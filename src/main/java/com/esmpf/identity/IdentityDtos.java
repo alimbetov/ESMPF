@@ -21,15 +21,12 @@ public final class IdentityDtos {
                                            Double latitude, Double longitude, String timezone,
                                            boolean active, Instant createdAt, Instant updatedAt) {}
 
-    public record UserAccountCreateCommand(String email, String phone, String passwordHash, String fullName,
-                                           String role, boolean worker, String externalProvider,
-                                           String externalSubject) {}
+    public record UserAccountCreateCommand(String email, String phone, String fullName,
+                                           boolean worker) {}
     public record UserAccountUpdateCommand(long version, String email, String phone, String fullName,
-                                           String role, boolean worker, String externalProvider,
-                                           String externalSubject) {}
+                                           boolean worker) {}
     public record UserAccountResponse(UUID id, long version, String email, String phone, String fullName,
-                                      String role, boolean worker, boolean active,
-                                      String externalProvider, String externalSubject,
+                                      boolean worker, boolean active,
                                       Instant createdAt, Instant updatedAt) {}
 
     public record WorkerQualificationCommand(long version, UUID userId, String type, String name,
@@ -40,5 +37,5 @@ public final class IdentityDtos {
                                               LocalDate validUntil, UUID attachmentId, String status,
                                               Instant createdAt, Instant updatedAt) {}
 
-    public record UserReference(UUID id, boolean active, boolean worker, String role) {}
+    public record UserReference(UUID id, boolean active, boolean worker) {}
 }

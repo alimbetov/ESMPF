@@ -51,8 +51,20 @@ interface IdentityMapper {
     @Mapping(target = "version", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "passwordHash", ignore = true)
+    @Mapping(target = "role", constant = "USER")
+    @Mapping(target = "externalProvider", ignore = true)
+    @Mapping(target = "externalSubject", ignore = true)
     @Mapping(target = "active", constant = "true")
     UserAccount toEntity(UserAccountCreateCommand command);
+
+    @BeanMapping(ignoreUnmappedSourceProperties = {
+            "businessId",
+            "passwordHash",
+            "role",
+            "externalProvider",
+            "externalSubject"
+    })
     UserAccountResponse toResponse(UserAccount entity);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
@@ -62,6 +74,9 @@ interface IdentityMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "passwordHash", ignore = true)
+    @Mapping(target = "role", ignore = true)
+    @Mapping(target = "externalProvider", ignore = true)
+    @Mapping(target = "externalSubject", ignore = true)
     @Mapping(target = "active", ignore = true)
     void update(UserAccountUpdateCommand command, @MappingTarget UserAccount entity);
 

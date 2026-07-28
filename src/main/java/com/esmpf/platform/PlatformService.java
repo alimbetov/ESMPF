@@ -33,6 +33,7 @@ public interface PlatformService {
     IdempotencyResponse failIdempotentOperation(UUID recordId, long version);
 
     IntegrationResponse createIntegration(IntegrationCommand command);
+    IntegrationResponse getIntegration(UUID connectionId);
     IntegrationResponse updateIntegration(UUID connectionId, IntegrationCommand command);
     IntegrationResponse activateIntegration(UUID connectionId, long version);
     IntegrationResponse suspendIntegration(UUID connectionId, long version);

@@ -17,6 +17,7 @@ public interface IdentityService {
     BusinessLocationResponse getLocation(UUID locationId);
     Page<BusinessLocationResponse> listLocations(Pageable pageable);
     BusinessLocationResponse updateLocation(UUID locationId, BusinessLocationCommand command);
+    BusinessLocationResponse activateLocation(UUID locationId, long version);
     BusinessLocationResponse deactivateLocation(UUID locationId, long version);
 
     UserAccountResponse createUser(UserAccountCreateCommand command);
@@ -27,6 +28,7 @@ public interface IdentityService {
     UserAccountResponse deactivateUser(UUID userId, long version);
 
     WorkerQualificationResponse createQualification(WorkerQualificationCommand command);
+    WorkerQualificationResponse getQualification(UUID qualificationId);
     Page<WorkerQualificationResponse> listQualifications(UUID userId, Pageable pageable);
     WorkerQualificationResponse updateQualification(UUID qualificationId, WorkerQualificationCommand command);
     WorkerQualificationResponse expireQualification(UUID qualificationId, long version);
