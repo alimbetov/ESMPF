@@ -52,7 +52,7 @@ interface IdentityMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "passwordHash", ignore = true)
-    @Mapping(target = "role", ignore = true)
+    @Mapping(target = "role", constant = "USER")
     @Mapping(target = "externalProvider", ignore = true)
     @Mapping(target = "externalSubject", ignore = true)
     @Mapping(target = "active", constant = "true")
