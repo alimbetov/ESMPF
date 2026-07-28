@@ -18,7 +18,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -30,6 +29,7 @@ class StorageServiceImpl implements StorageService {
     private final TenantContext tenantContext;
     private final StoredFileRepository repository;
     private final FileStoragePort storage;
+    private final StoredFileLifecycleService lifecycle;
 
     @Value("${esmpf.storage.file.max-size:104857600}")
     private long maximumBytes;
@@ -39,55 +39,19 @@ class StorageServiceImpl implements StorageService {
         if (file == null || file.isEmpty()) throw new IllegalArgumentException("file is required");
         String original = requireFileName(file.getOriginalFilename());
         String normalized = normalizeFileName(original);
-        String detected;
-        StoredFile entity = createCreating(original, normalized, file.getContentType());
+        StoredFile entity = lifecycle.createCreating(original, normalized, file.getContentType());
         try (BufferedInputStream input = new BufferedInputStream(file.getInputStream())) {
             input.mark(32);
-            detected = detectMime(input, normalized);
+            String detected = detectMime(input, normalized);
             input.reset();
             if (!ALLOWED.contains(detected)) throw new UnsupportedFileTypeException(detected);
             FileStoragePort.StorageWriteResult written = storage.store(new FileStoragePort.StorageWriteRequest(
                     entity.getBusinessId(), entity.getId(), input, maximumBytes));
-            return complete(entity.getId(), detected, written);
+            return response(lifecycle.markAvailable(entity.getId(), detected, written));
         } catch (RuntimeException | IOException failure) {
-            fail(entity.getId());
+            lifecycle.markFailed(entity.getId());
             throw failure;
         }
-    }
-
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    StoredFile createCreating(String original, String normalized, String declaredMime) {
-        StoredFile entity = new StoredFile();
-        entity.setBusinessId(tenant());
-        entity.setOriginalFileName(original);
-        entity.setNormalizedFileName(normalized);
-        entity.setDeclaredMimeType(declaredMime);
-        entity.setDetectedMimeType("application/octet-stream");
-        entity.setStorageProvider(StorageProvider.LOCAL);
-        entity.setStatus(StoredFileStatus.CREATING);
-        entity.setCreatedBy(tenantContext.requireUserId());
-        entity.setFileSize(0);
-        return repository.saveAndFlush(entity);
-    }
-
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    StoredFile complete(UUID id, String detectedMime, FileStoragePort.StorageWriteResult written) {
-        StoredFile entity = require(id);
-        entity.setStorageKey(written.storageKey());
-        entity.setFileSize(written.size());
-        entity.setChecksumSha256(written.checksumSha256());
-        entity.setDetectedMimeType(detectedMime);
-        entity.setAvailableAt(Instant.now());
-        entity.setStatus(StoredFileStatus.AVAILABLE);
-        return repository.saveAndFlush(entity);
-    }
-
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    void fail(UUID id) {
-        repository.findByIdAndBusinessId(id, tenant()).ifPresent(entity -> {
-            entity.setStatus(StoredFileStatus.FAILED);
-            repository.saveAndFlush(entity);
-        });
     }
 
     @Override @Transactional(readOnly = true)
@@ -99,7 +63,7 @@ class StorageServiceImpl implements StorageService {
     @Override @Transactional(readOnly = true)
     public FileDownload download(UUID fileId) {
         StoredFile entity = require(fileId);
-        if (entity.getStatus() != StoredFileStatus.AVAILABLE) throw new IllegalStateException("File is not available");
+        if (entity.getStatus() != StoredFileStatus.AVAILABLE) throw new FileNotAvailableException(entity.getStatus());
         try {
             FileStoragePort.StoredContent content = storage.open(entity.getStorageKey());
             return new FileDownload(entity.getNormalizedFileName(), entity.getDetectedMimeType(), content.contentLength(), content.inputStream());
@@ -112,7 +76,7 @@ class StorageServiceImpl implements StorageService {
     public FileResponse delete(UUID fileId, long version) {
         StoredFile entity = require(fileId);
         checkVersion(fileId, version, entity.getVersion());
-        if (entity.getStatus() != StoredFileStatus.AVAILABLE) throw new IllegalStateException("Only available files can be deleted");
+        if (entity.getStatus() != StoredFileStatus.AVAILABLE) throw new FileNotAvailableException(entity.getStatus());
         entity.setStatus(StoredFileStatus.DELETED);
         entity.setDeletedAt(Instant.now());
         entity.setDeletedBy(tenantContext.requireUserId());
@@ -124,7 +88,7 @@ class StorageServiceImpl implements StorageService {
         StoredFile entity = require(fileId);
         checkVersion(fileId, version, entity.getVersion());
         if (entity.getStatus() != StoredFileStatus.DELETED || entity.getPhysicalDeletedAt() != null) {
-            throw new IllegalStateException("File cannot be restored");
+            throw new FileNotAvailableException(entity.getStatus());
         }
         if (!storage.exists(entity.getStorageKey())) throw new StorageUnavailableException(null);
         entity.setStatus(StoredFileStatus.AVAILABLE);
@@ -176,6 +140,10 @@ class StorageServiceImpl implements StorageService {
 
 final class UnsupportedFileTypeException extends IllegalArgumentException {
     UnsupportedFileTypeException(String mimeType) { super("File type is not allowed: " + mimeType); }
+}
+
+final class FileNotAvailableException extends IllegalStateException {
+    FileNotAvailableException(StoredFileStatus status) { super("File is not available in status " + status); }
 }
 
 final class StorageUnavailableException extends IllegalStateException {
