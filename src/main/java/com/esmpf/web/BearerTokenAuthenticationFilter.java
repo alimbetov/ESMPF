@@ -1,9 +1,8 @@
 package com.esmpf.web;
 
-import com.esmpf.identity.AccessControlQuery;
-import com.esmpf.identity.RbacDtos.EffectiveAccess;
 import com.esmpf.shared.security.EsmpfPrincipal;
 import com.esmpf.shared.security.JwtUtility;
+import com.esmpf.shared.security.PersistedAccessResolver;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,16 +23,16 @@ final class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER = "Bearer ";
 
     private final JwtUtility jwtUtility;
-    private final AccessControlQuery accessControlQuery;
+    private final PersistedAccessResolver accessResolver;
     private final AuthenticationEntryPoint authenticationEntryPoint;
 
     BearerTokenAuthenticationFilter(
             JwtUtility jwtUtility,
-            AccessControlQuery accessControlQuery,
+            PersistedAccessResolver accessResolver,
             AuthenticationEntryPoint authenticationEntryPoint
     ) {
         this.jwtUtility = jwtUtility;
-        this.accessControlQuery = accessControlQuery;
+        this.accessResolver = accessResolver;
         this.authenticationEntryPoint = authenticationEntryPoint;
     }
 
@@ -60,11 +59,9 @@ final class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
 
         try {
             var validated = jwtUtility.validateAccessToken(authorization.substring(BEARER.length()));
-            EffectiveAccess access = accessControlQuery.resolveEffectiveAccess(validated.userId());
+            var access = accessResolver.resolve(validated.userId());
             Set<String> roleCodes = access.roleCodes();
-            Set<String> permissions = access.permissions().stream()
-                    .map(Enum::name)
-                    .collect(java.util.stream.Collectors.toUnmodifiableSet());
+            Set<String> permissions = access.permissionCodes();
             EsmpfPrincipal principal = new EsmpfPrincipal(
                     access.userId(), access.businessId(), roleCodes, permissions);
             List<SimpleGrantedAuthority> authorities = java.util.stream.Stream.concat(
