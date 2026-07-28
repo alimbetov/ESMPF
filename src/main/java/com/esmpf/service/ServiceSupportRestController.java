@@ -1,7 +1,6 @@
 package com.esmpf.service;
 
 import static com.esmpf.service.ServiceSupportDtos.*;
-import static com.esmpf.web.ApiActionRequests.ReasonRequest;
 import static com.esmpf.web.ApiActionRequests.ReferenceRequest;
 import static com.esmpf.web.ApiActionRequests.TextRequest;
 import static com.esmpf.web.ApiActionRequests.VersionRequest;
@@ -28,6 +27,7 @@ public class ServiceSupportRestController {
 
     @PostMapping("/materials") @ResponseStatus(HttpStatus.CREATED)
     public MaterialCatalogResponse createMaterial(@Valid @RequestBody MaterialCatalogCommand command) { return service.createMaterial(command); }
+    @GetMapping("/materials/{materialId}") public MaterialCatalogResponse getMaterial(@PathVariable UUID materialId) { return service.getMaterial(materialId); }
     @PutMapping("/materials/{materialId}") public MaterialCatalogResponse updateMaterial(@PathVariable UUID materialId, @Valid @RequestBody MaterialCatalogCommand command) { return service.updateMaterial(materialId, command); }
     @PostMapping("/materials/{materialId}/actions/deactivate") public MaterialCatalogResponse deactivateMaterial(@PathVariable UUID materialId, @Valid @RequestBody VersionRequest request) { return service.deactivateMaterial(materialId, request.version()); }
     @GetMapping("/materials") public Page<MaterialCatalogResponse> listMaterials(Pageable pageable) { return service.listMaterials(pageable); }
@@ -38,6 +38,7 @@ public class ServiceSupportRestController {
 
     @PostMapping("/service-agreements") @ResponseStatus(HttpStatus.CREATED)
     public ServiceAgreementResponse createAgreement(@Valid @RequestBody ServiceAgreementCommand command) { return service.createAgreement(command); }
+    @GetMapping("/service-agreements/{agreementId}") public ServiceAgreementResponse getAgreement(@PathVariable UUID agreementId) { return service.getAgreement(agreementId); }
     @PutMapping("/service-agreements/{agreementId}") public ServiceAgreementResponse updateDraftAgreement(@PathVariable UUID agreementId, @Valid @RequestBody ServiceAgreementCommand command) { return service.updateDraftAgreement(agreementId, command); }
     @PostMapping("/service-agreements/{agreementId}/actions/activate") public ServiceAgreementResponse activateAgreement(@PathVariable UUID agreementId, @Valid @RequestBody VersionRequest request) { return service.activateAgreement(agreementId, request.version()); }
     @PostMapping("/service-agreements/{agreementId}/actions/suspend") public ServiceAgreementResponse suspendAgreement(@PathVariable UUID agreementId, @Valid @RequestBody VersionRequest request) { return service.suspendAgreement(agreementId, request.version()); }
@@ -46,6 +47,7 @@ public class ServiceSupportRestController {
 
     @PostMapping("/warranty-cases") @ResponseStatus(HttpStatus.CREATED)
     public WarrantyCaseResponse openWarrantyCase(@Valid @RequestBody WarrantyCaseCommand command) { return service.openWarrantyCase(command); }
+    @GetMapping("/warranty-cases/{caseId}") public WarrantyCaseResponse getWarrantyCase(@PathVariable UUID caseId) { return service.getWarrantyCase(caseId); }
     @PostMapping("/warranty-cases/{caseId}/actions/approve") public WarrantyCaseResponse approveWarrantyCase(@PathVariable UUID caseId, @Valid @RequestBody TextRequest request) { return service.approveWarrantyCase(caseId, request.version(), request.value()); }
     @PostMapping("/warranty-cases/{caseId}/actions/reject") public WarrantyCaseResponse rejectWarrantyCase(@PathVariable UUID caseId, @Valid @RequestBody TextRequest request) { return service.rejectWarrantyCase(caseId, request.version(), request.value()); }
     @PostMapping("/warranty-cases/{caseId}/actions/close") public WarrantyCaseResponse closeWarrantyCase(@PathVariable UUID caseId, @Valid @RequestBody VersionRequest request) { return service.closeWarrantyCase(caseId, request.version()); }
@@ -53,6 +55,7 @@ public class ServiceSupportRestController {
 
     @PostMapping("/mobile-devices") @ResponseStatus(HttpStatus.CREATED)
     public MobileDeviceResponse registerDevice(@Valid @RequestBody MobileDeviceCommand command) { return service.registerDevice(command); }
+    @GetMapping("/mobile-devices/{deviceId}") public MobileDeviceResponse getDevice(@PathVariable UUID deviceId) { return service.getDevice(deviceId); }
     @PostMapping("/mobile-devices/{deviceId}/actions/touch") public MobileDeviceResponse touchDevice(@PathVariable UUID deviceId, @Valid @RequestBody TextRequest request) { return service.touchDevice(deviceId, request.version(), request.value()); }
     @PostMapping("/mobile-devices/{deviceId}/actions/revoke") public MobileDeviceResponse revokeDevice(@PathVariable UUID deviceId, @Valid @RequestBody VersionRequest request) { return service.revokeDevice(deviceId, request.version()); }
     @GetMapping("/users/{userId}/mobile-devices") public Page<MobileDeviceResponse> listDevices(@PathVariable UUID userId, Pageable pageable) { return service.listDevices(userId, pageable); }
