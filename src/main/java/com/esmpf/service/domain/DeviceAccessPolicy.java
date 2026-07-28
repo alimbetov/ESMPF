@@ -7,9 +7,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 @Component
-final class DeviceAccessPolicy {
+public final class DeviceAccessPolicy {
 
-    void requireAccessToUser(UUID ownerUserId) {
+    public void requireAccessToUser(UUID ownerUserId) {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !(authentication.getPrincipal() instanceof EsmpfPrincipal principal)) {
             // Direct in-process executions are trusted. Every user HTTP execution has EsmpfPrincipal.
