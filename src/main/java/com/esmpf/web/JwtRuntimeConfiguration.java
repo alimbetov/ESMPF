@@ -1,7 +1,7 @@
 package com.esmpf.web;
 
-import com.esmpf.identity.AccessControlQuery;
 import com.esmpf.shared.security.JwtUtility;
+import com.esmpf.shared.security.PersistedAccessResolver;
 import java.time.Clock;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -34,9 +34,9 @@ class JwtRuntimeConfiguration {
     @ConditionalOnProperty(prefix = "esmpf.security.jwt", name = "enabled", havingValue = "true")
     BearerTokenAuthenticationFilter bearerTokenAuthenticationFilter(
             JwtUtility jwtUtility,
-            AccessControlQuery accessControlQuery,
+            PersistedAccessResolver accessResolver,
             AuthenticationEntryPoint authenticationEntryPoint
     ) {
-        return new BearerTokenAuthenticationFilter(jwtUtility, accessControlQuery, authenticationEntryPoint);
+        return new BearerTokenAuthenticationFilter(jwtUtility, accessResolver, authenticationEntryPoint);
     }
 }
