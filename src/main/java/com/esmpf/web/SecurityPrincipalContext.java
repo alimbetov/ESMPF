@@ -6,13 +6,11 @@ import com.esmpf.shared.security.EsmpfPrincipal;
 import com.esmpf.shared.security.SecurityAccessException;
 import com.esmpf.shared.tenant.TenantContext;
 import java.util.UUID;
-import org.springframework.context.annotation.Primary;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 @Component
-@Primary
 final class SecurityPrincipalContext implements TenantContext, AuthenticatedActorContext {
 
     @Override
