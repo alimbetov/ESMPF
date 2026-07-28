@@ -31,4 +31,14 @@ interface UserRoleAssignmentRepository extends JpaRepository<UserRoleAssignment,
     List<UserRoleAssignment> findEffective(@Param("businessId") UUID businessId,
                                            @Param("userId") UUID userId,
                                            @Param("now") Instant now);
+
+    @Query("""
+        select count(a) from UserRoleAssignment a
+        where a.businessId=:businessId and a.roleId=:roleId and a.status='ACTIVE'
+          and (a.validFrom is null or a.validFrom<=:now)
+          and (a.validUntil is null or a.validUntil>:now)
+        """)
+    long countEffectiveRoleAssignments(@Param("businessId") UUID businessId,
+                                       @Param("roleId") UUID roleId,
+                                       @Param("now") Instant now);
 }
