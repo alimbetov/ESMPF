@@ -10,6 +10,7 @@ import static com.esmpf.platform.PlatformDtos.PublicTokenCommand;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.esmpf.communication.CommunicationService;
 import com.esmpf.document.DocumentService;
@@ -64,10 +65,9 @@ class CompletedServiceModulesIntegrationTests {
         tenantContext.businessId = business.id();
 
         var user = identityService.createUser(new UserAccountCreateCommand(
-                "worker-" + UUID.randomUUID() + "@example.test", null, "hash", "Worker",
-                "TECHNICIAN", true, null, null));
+                "worker-" + UUID.randomUUID() + "@example.test", null, "Worker", true));
         assertEquals(business.id(), tenantContext.businessId);
-        assertEquals("TECHNICIAN", user.role());
+        assertTrue(user.worker());
 
         var template = documentService.createTemplate(new ReportTemplateCommand(
                 0, "WORK_REPORT", "WORK_REPORT", "ru", 1, "<html/>", null, "{}"));
