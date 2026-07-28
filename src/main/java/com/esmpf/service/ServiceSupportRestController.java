@@ -5,6 +5,7 @@ import static com.esmpf.web.ApiActionRequests.ReferenceRequest;
 import static com.esmpf.web.ApiActionRequests.TextRequest;
 import static com.esmpf.web.ApiActionRequests.VersionRequest;
 
+import com.esmpf.service.domain.DeviceAccessPolicy;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class ServiceSupportRestController {
     private final ServiceSupportService service;
+    private final DeviceAccessPolicy deviceAccessPolicy;
 
     @PostMapping("/recommendations") @ResponseStatus(HttpStatus.CREATED)
     public RecommendationResponse createRecommendation(@Valid @RequestBody RecommendationCommand command) { return service.createRecommendation(command); }
@@ -54,15 +56,34 @@ public class ServiceSupportRestController {
     @GetMapping("/equipment/{equipmentId}/warranty-cases") public Page<WarrantyCaseResponse> listWarrantyCases(@PathVariable UUID equipmentId, Pageable pageable) { return service.listWarrantyCases(equipmentId, pageable); }
 
     @PostMapping("/mobile-devices") @ResponseStatus(HttpStatus.CREATED)
-    public MobileDeviceResponse registerDevice(@Valid @RequestBody MobileDeviceCommand command) { return service.registerDevice(command); }
-    @GetMapping("/mobile-devices/{deviceId}") public MobileDeviceResponse getDevice(@PathVariable UUID deviceId) { return service.getDevice(deviceId); }
-    @PostMapping("/mobile-devices/{deviceId}/actions/touch") public MobileDeviceResponse touchDevice(@PathVariable UUID deviceId, @Valid @RequestBody TextRequest request) { return service.touchDevice(deviceId, request.version(), request.value()); }
-    @PostMapping("/mobile-devices/{deviceId}/actions/revoke") public MobileDeviceResponse revokeDevice(@PathVariable UUID deviceId, @Valid @RequestBody VersionRequest request) { return service.revokeDevice(deviceId, request.version()); }
-    @GetMapping("/users/{userId}/mobile-devices") public Page<MobileDeviceResponse> listDevices(@PathVariable UUID userId, Pageable pageable) { return service.listDevices(userId, pageable); }
+    public MobileDeviceResponse registerDevice(@Valid @RequestBody MobileDeviceCommand command) {
+        deviceAccessPolicy.requireAccessToUser(command.userId());
+        return service.registerDevice(command);
+    }
+    @GetMapping("/mobile-devices/{deviceId}") public MobileDeviceResponse getDevice(@PathVariable UUID deviceId) {
+        MobileDeviceResponse device = service.getDevice(deviceId);
+        deviceAccessPolicy.requireAccessToUser(device.userId());
+        return device;
+    }
+    @PostMapping("/mobile-devices/{deviceId}/actions/touch") public MobileDeviceResponse touchDevice(@PathVariable UUID deviceId, @Valid @RequestBody TextRequest request) {
+        deviceAccessPolicy.requireAccessToUser(service.getDevice(deviceId).userId());
+        return service.touchDevice(deviceId, request.version(), request.value());
+    }
+    @PostMapping("/mobile-devices/{deviceId}/actions/revoke") public MobileDeviceResponse revokeDevice(@PathVariable UUID deviceId, @Valid @RequestBody VersionRequest request) {
+        deviceAccessPolicy.requireAccessToUser(service.getDevice(deviceId).userId());
+        return service.revokeDevice(deviceId, request.version());
+    }
+    @GetMapping("/users/{userId}/mobile-devices") public Page<MobileDeviceResponse> listDevices(@PathVariable UUID userId, Pageable pageable) {
+        deviceAccessPolicy.requireAccessToUser(userId);
+        return service.listDevices(userId, pageable);
+    }
 
     @PostMapping("/sync-operations") @ResponseStatus(HttpStatus.CREATED)
     public SyncOperationResponse receiveSyncOperation(@Valid @RequestBody SyncOperationCommand command) { return service.receiveSyncOperation(command); }
     @PostMapping("/sync-operations/{operationId}/actions/complete") public SyncOperationResponse completeSyncOperation(@PathVariable UUID operationId, @Valid @RequestBody VersionRequest request) { return service.completeSyncOperation(operationId, request.version()); }
     @PostMapping("/sync-operations/{operationId}/actions/fail") public SyncOperationResponse failSyncOperation(@PathVariable UUID operationId, @Valid @RequestBody TextRequest request) { return service.failSyncOperation(operationId, request.version(), request.value()); }
-    @GetMapping("/mobile-devices/{deviceId}/sync-operations") public Page<SyncOperationResponse> listSyncOperations(@PathVariable UUID deviceId, Pageable pageable) { return service.listSyncOperations(deviceId, pageable); }
+    @GetMapping("/mobile-devices/{deviceId}/sync-operations") public Page<SyncOperationResponse> listSyncOperations(@PathVariable UUID deviceId, Pageable pageable) {
+        deviceAccessPolicy.requireAccessToUser(service.getDevice(deviceId).userId());
+        return service.listSyncOperations(deviceId, pageable);
+    }
 }

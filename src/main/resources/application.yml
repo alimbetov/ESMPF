@@ -21,6 +21,13 @@ spring:
 
 esmpf:
   security:
+    jwt:
+      enabled: ${ESMPF_JWT_ENABLED:false}
+      issuer: ${ESMPF_JWT_ISSUER:esmpf}
+      audience: ${ESMPF_JWT_AUDIENCE:esmpf-api}
+      secret: ${ESMPF_JWT_SECRET:}
+      access-token-ttl: ${ESMPF_JWT_ACCESS_TOKEN_TTL:PT15M}
+      clock-skew: ${ESMPF_JWT_CLOCK_SKEW:PT30S}
     google:
       enabled: false
 
