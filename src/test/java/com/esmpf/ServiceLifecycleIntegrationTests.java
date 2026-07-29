@@ -1,5 +1,6 @@
 package com.esmpf;
 
+import static com.esmpf.catalog.CatalogDtos.ChecklistTemplateCommand;
 import static com.esmpf.catalog.CatalogDtos.EquipmentTypeCommand;
 import static com.esmpf.catalog.CatalogDtos.JobTypeCommand;
 import static com.esmpf.catalog.CatalogDtos.MaintenanceTemplateCommand;
@@ -8,9 +9,11 @@ import static com.esmpf.customer.CustomerDtos.ServiceLocationCreateCommand;
 import static com.esmpf.equipment.EquipmentDtos.EquipmentCreateCommand;
 import static com.esmpf.maintenance.MaintenanceDtos.MaintenanceOccurrenceCreateCommand;
 import static com.esmpf.maintenance.MaintenanceDtos.MaintenancePlanCreateCommand;
+import static com.esmpf.service.ServiceManagementDtos.JobExecutionStartCommand;
 import static com.esmpf.service.ServiceManagementDtos.JobVisitPlanCommand;
 import static com.esmpf.service.ServiceManagementDtos.ServiceJobCreateCommand;
 import static com.esmpf.service.ServiceManagementDtos.ServiceRequestCreateCommand;
+import static com.esmpf.service.ServiceManagementDtos.WorkReportCreateCommand;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -70,6 +73,56 @@ class ServiceLifecycleIntegrationTests {
     void configureTenant() {
         tenantContext.businessId = TENANT;
         tenantContext.userId = USER;
+    }
+
+    @Test
+    void completesOfficialServiceLifecycleThroughClosedJob() {
+        Fixture fixture = createFixture("FULL");
+        var checklist = catalogService.createChecklistTemplate(new ChecklistTemplateCommand(
+                0, "CHECK-FULL", "Full service checklist", fixture.equipmentTypeId,
+                fixture.jobTypeId, 1, "{\"required\":[\"result\"]}"));
+        checklist = catalogService.publishChecklistTemplate(checklist.id(), checklist.version());
+
+        var request = serviceManagementService.createRequest(new ServiceRequestCreateCommand(
+                fixture.customerId, fixture.locationId, fixture.equipmentId,
+                "PHONE", "NORMAL", "Pump noise", "Customer reports abnormal noise"));
+        request = serviceManagementService.triageRequest(request.id(), request.version());
+        request = serviceManagementService.getRequest(request.id());
+        request = serviceManagementService.acceptRequest(request.id(), request.version());
+        request = serviceManagementService.getRequest(request.id());
+
+        var job = serviceManagementService.convertRequestToJob(
+                request.id(), request.version(),
+                new ServiceJobCreateCommand(
+                        request.id(), null, fixture.customerId, fixture.locationId,
+                        fixture.equipmentId, fixture.jobTypeId, null,
+                        "NORMAL", "Inspect pump", "Diagnostic visit", null, null));
+        job = serviceManagementService.markJobReady(job.id(), job.version());
+
+        var visit = serviceManagementService.planVisit(new JobVisitPlanCommand(
+                job.id(), Instant.now().plusSeconds(3600), Instant.now().plusSeconds(7200), null));
+        visit = serviceManagementService.startVisit(visit.id(), visit.version(), "{\"arrived\":true}");
+
+        var execution = serviceManagementService.startExecution(new JobExecutionStartCommand(
+                job.id(), visit.id(), checklist.id(), checklist.templateVersion(), checklist.schemaJson()));
+        execution = serviceManagementService.completeExecution(
+                execution.id(), execution.version(), "{\"result\":\"PASS\"}");
+
+        visit = serviceManagementService.completeVisit(
+                visit.id(), visit.version(), "{\"completed\":true}", "{\"accepted\":true}");
+
+        var report = serviceManagementService.createWorkReport(new WorkReportCreateCommand(
+                job.id(), visit.id(), execution.id(), "Worn bearing", "Bearing adjusted",
+                "Equipment operational", "[]", "[]", "Accepted"));
+        report = serviceManagementService.approveWorkReport(report.id(), report.version());
+        assertEquals("APPROVED", report.status());
+
+        job = serviceManagementService.getJob(job.id());
+        job = serviceManagementService.completeJob(job.id(), job.version());
+        assertEquals("COMPLETED", job.status());
+        job = serviceManagementService.closeJob(job.id(), job.version());
+        assertEquals("CLOSED", job.status());
+        assertEquals("CONVERTED_TO_JOB", serviceManagementService.getRequest(request.id()).status());
     }
 
     @Test
