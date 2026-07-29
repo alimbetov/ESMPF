@@ -87,7 +87,9 @@ class ServiceLifecycleIntegrationTests {
                 fixture.customerId, fixture.locationId, fixture.equipmentId,
                 "PHONE", "NORMAL", "Pump noise", "Customer reports abnormal noise"));
         request = serviceManagementService.triageRequest(request.id(), request.version());
+        request = serviceManagementService.getRequest(request.id());
         request = serviceManagementService.acceptRequest(request.id(), request.version());
+        request = serviceManagementService.getRequest(request.id());
 
         var job = serviceManagementService.convertRequestToJob(
                 request.id(), request.version(),
