@@ -119,8 +119,8 @@ public final class ServiceManagementDtos {
     }
 
     public record ServiceJobReference(
-            UUID id, UUID maintenanceOccurrenceId, UUID customerId, UUID serviceLocationId,
-            UUID equipmentId, UUID jobTypeId, String status
+            UUID id, UUID customerId, UUID serviceLocationId, UUID equipmentId,
+            UUID jobTypeId, String status
     ) {
     }
 }
