@@ -106,9 +106,10 @@ class MaintenanceFullLifecycleIntegrationTests {
         assertEquals("JOB_CREATED", occurrence.status());
         assertEquals(job.id(), occurrence.serviceJobId());
 
+        UUID linkedOccurrenceId = occurrence.id();
         long linkedVersion = occurrence.version();
         assertThrows(IllegalStateException.class,
-                () -> maintenanceService.completeOccurrence(occurrence.id(), linkedVersion));
+                () -> maintenanceService.completeOccurrence(linkedOccurrenceId, linkedVersion));
 
         job = serviceManagementService.markJobReady(job.id(), job.version());
         job = serviceManagementService.getJob(job.id());
@@ -116,8 +117,6 @@ class MaintenanceFullLifecycleIntegrationTests {
         var visit = serviceManagementService.planVisit(new JobVisitPlanCommand(
                 job.id(), Instant.now().plusSeconds(3600), Instant.now().plusSeconds(7200), null));
         visit = serviceManagementService.startVisit(visit.id(), visit.version(), "{\"arrived\":true}");
-        visit = serviceManagementService.listVisits(job.id(), org.springframework.data.domain.PageRequest.of(0, 10))
-                .getContent().stream().filter(item -> item.id().equals(visit.id())).findFirst().orElseThrow();
 
         var execution = serviceManagementService.startExecution(new JobExecutionStartCommand(
                 job.id(), visit.id(), fixture.checklistId(), fixture.checklistVersion(), fixture.checklistSchema()));
@@ -139,7 +138,7 @@ class MaintenanceFullLifecycleIntegrationTests {
         job = serviceManagementService.closeJob(job.id(), job.version());
         assertEquals("CLOSED", job.status());
 
-        occurrence = maintenanceService.getOccurrence(occurrence.id());
+        occurrence = maintenanceService.getOccurrence(linkedOccurrenceId);
         occurrence = maintenanceService.completeOccurrence(occurrence.id(), occurrence.version());
         occurrence = maintenanceService.getOccurrence(occurrence.id());
         assertEquals("COMPLETED", occurrence.status());
