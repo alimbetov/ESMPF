@@ -8,12 +8,15 @@ import com.esmpf.equipment.EquipmentDtos.EquipmentReference;
 import com.esmpf.equipment.EquipmentReferenceQuery;
 import com.esmpf.maintenance.MaintenanceReferenceQuery;
 import com.esmpf.maintenance.MaintenanceService;
+import com.esmpf.service.ServiceManagementDtos.ServiceJobResponse;
+import com.esmpf.service.ServiceManagementService;
 import com.esmpf.shared.exception.EntityNotFoundException;
 import com.esmpf.shared.exception.StaleEntityException;
 import com.esmpf.shared.tenant.TenantContext;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -28,6 +31,7 @@ class MaintenanceServiceImpl implements MaintenanceService, MaintenanceReference
     private final TenantContext tenantContext;
     private final EquipmentReferenceQuery equipmentReferences;
     private final CatalogReferenceQuery catalogReferences;
+    private final ServiceManagementService serviceManagementService;
     private final MaintenancePlanRepository planRepository;
     private final MaintenanceOccurrenceRepository occurrenceRepository;
     private final MaintenanceMapper mapper;
@@ -93,6 +97,13 @@ class MaintenanceServiceImpl implements MaintenanceService, MaintenanceReference
         if (!("DRAFT".equals(entity.getStatus()) || "SUSPENDED".equals(entity.getStatus()))) {
             throw new IllegalStateException("Only DRAFT or SUSPENDED maintenance plans can be activated");
         }
+        EquipmentReference equipment = equipmentReferences.requireEquipment(entity.getEquipmentId());
+        requireActive(equipment.status(), "Equipment");
+        MaintenanceTemplateReference template = catalogReferences.requireMaintenanceTemplate(entity.getMaintenanceTemplateId());
+        requireActive(template.status(), "MaintenanceTemplate");
+        if (!template.equipmentTypeId().equals(equipment.equipmentTypeId())) {
+            throw new IllegalArgumentException("Maintenance template does not match equipment type");
+        }
         entity.setStatus("ACTIVE");
         return mapper.toResponse(entity);
     }
@@ -132,6 +143,14 @@ class MaintenanceServiceImpl implements MaintenanceService, MaintenanceReference
         if (command.dueDate() == null && command.dueMeterValue() == null) {
             throw new IllegalArgumentException("Occurrence requires dueDate or dueMeterValue");
         }
+        if (command.dueDate() != null) {
+            if (plan.getActiveFrom() != null && command.dueDate().isBefore(plan.getActiveFrom())) {
+                throw new IllegalArgumentException("Occurrence dueDate cannot be before plan activeFrom");
+            }
+            if (plan.getActiveUntil() != null && command.dueDate().isAfter(plan.getActiveUntil())) {
+                throw new IllegalArgumentException("Occurrence dueDate cannot be after plan activeUntil");
+            }
+        }
         if (command.dueMeterValue() != null && command.dueMeterValue().signum() < 0) {
             throw new IllegalArgumentException("Due meter value cannot be negative");
         }
@@ -165,15 +184,37 @@ class MaintenanceServiceImpl implements MaintenanceService, MaintenanceReference
     public MaintenanceOccurrenceResponse linkServiceJob(UUID occurrenceId, long version, UUID serviceJobId) {
         MaintenanceOccurrence entity = requireOccurrenceEntity(occurrenceId);
         checkVersion("MaintenanceOccurrence", occurrenceId, version, entity.getVersion());
-        if (entity.getServiceJobId() != null) {
-            throw new IllegalStateException("Maintenance occurrence is already linked to a service job");
-        }
-        if (!("PLANNED".equals(entity.getStatus()) || "DUE".equals(entity.getStatus()))) {
+        if (!("PLANNED".equals(entity.getStatus()) || "DUE".equals(entity.getStatus())
+                || "JOB_CREATED".equals(entity.getStatus()))) {
             throw new IllegalStateException("Maintenance occurrence cannot be linked in status " + entity.getStatus());
         }
+        if (serviceJobId == null) {
+            throw new IllegalArgumentException("serviceJobId is required");
+        }
+        if (entity.getServiceJobId() != null) {
+            if (entity.getServiceJobId().equals(serviceJobId)) {
+                return mapper.toResponse(entity);
+            }
+            throw new IllegalStateException("Maintenance occurrence is already linked to another service job");
+        }
+
+        MaintenancePlan plan = requirePlanEntity(entity.getMaintenancePlanId());
+        MaintenanceTemplateReference template = catalogReferences.requireMaintenanceTemplate(plan.getMaintenanceTemplateId());
+        ServiceJobResponse job = serviceManagementService.getJob(serviceJobId);
+
+        if (!Objects.equals(job.maintenanceOccurrenceId(), entity.getId())) {
+            throw new IllegalArgumentException("Service job does not reference this maintenance occurrence");
+        }
+        if (!Objects.equals(job.equipmentId(), plan.getEquipmentId())) {
+            throw new IllegalArgumentException("Service job equipment does not match maintenance plan equipment");
+        }
+        if (!Objects.equals(job.jobTypeId(), template.jobTypeId())) {
+            throw new IllegalArgumentException("Service job type does not match maintenance template job type");
+        }
+
         entity.setServiceJobId(serviceJobId);
         entity.setStatus("JOB_CREATED");
-        return mapper.toResponse(entity);
+        return mapper.toResponse(occurrenceRepository.saveAndFlush(entity));
     }
 
     @Override
@@ -184,12 +225,28 @@ class MaintenanceServiceImpl implements MaintenanceService, MaintenanceReference
         if (!"JOB_CREATED".equals(entity.getStatus())) {
             throw new IllegalStateException("Only JOB_CREATED occurrences can be completed");
         }
+        if (entity.getServiceJobId() == null) {
+            throw new IllegalStateException("Maintenance occurrence must be linked to a service job");
+        }
+
+        MaintenancePlan plan = requirePlanEntity(entity.getMaintenancePlanId());
+        ServiceJobResponse job = serviceManagementService.getJob(entity.getServiceJobId());
+        if (!Objects.equals(job.maintenanceOccurrenceId(), entity.getId())) {
+            throw new IllegalStateException("Linked service job does not reference this maintenance occurrence");
+        }
+        if (!Objects.equals(job.equipmentId(), plan.getEquipmentId())) {
+            throw new IllegalStateException("Linked service job equipment does not match maintenance plan equipment");
+        }
+        if (!"CLOSED".equals(job.status())) {
+            throw new IllegalStateException("Maintenance occurrence requires a CLOSED service job");
+        }
+
         Instant now = Instant.now();
         entity.setStatus("COMPLETED");
         entity.setCompletedAt(now);
-        MaintenancePlan plan = requirePlanEntity(entity.getMaintenancePlanId());
         plan.setLastCompletedAt(now);
-        return mapper.toResponse(entity);
+        planRepository.save(plan);
+        return mapper.toResponse(occurrenceRepository.saveAndFlush(entity));
     }
 
     @Override
